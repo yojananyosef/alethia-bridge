@@ -9,6 +9,7 @@ Software de análisis exegético y estudio bíblico (estilo Logos/Accordance/STE
 ```bash
 bun install          # dependencias (better-sqlite3 usa binario prebuilt; ver ignoreScripts)
 bun run seed         # genera data/modules/*.db (Juan 3 RV1909 + NA28 + léxico Strong + índice FTS5)
+bun run import       # ETL real: USFX/OSIS XML → módulo instalable (node scripts/import-osis.ts)
 bun run dev          # servidor de desarrollo en http://localhost:3000
 bun run test         # tests de integración (SLA de la API)
 bun run build        # build de producción
@@ -31,9 +32,10 @@ app/
       [id]/route.ts     # PATCH (enable/disable) · DELETE (desinstalar)
 scripts/
   seed-test-db.ts       # genera los SQLite de prueba (Juan 3 completo + manifests + canon)
-  import-osis.ts        # ETL borrador: OSIS XML → SQLite
+  import-osis.ts        # ETL real: USFX/OSIS XML → SQLite (SAX, milestones, Strong, manifest+canon)
   package-module.ts     # empaqueta un módulo instalado a .abmod (bun run package <id>)
 src/
+  lib/canon.ts          # canon 66 libros compartido (id interno + código USFX + nombre OSIS)
   lib/db/sqlite.ts      # conexiones WAL, esquema, normalizeText, meta/libros
   lib/db/dexie-user-db.ts  # notas y resaltados locales (IndexedDB)
   lib/bible/service.ts  # readChapter, searchBible, getLexiconEntry, getMorphology
@@ -59,12 +61,27 @@ Cada módulo es una base SQLite con su **manifest** (tabla `meta`) y, para bibli
 **Formato `.abmod`**: zip con `manifest.json` + `module.db` (copia limpia sin WAL).
 
 ```bash
-bun run package RV1909        # → dist-modules/RV1909-0.1.0.abmod
+bun run package RV1909        # → dist-modules/RV1909-1.0.0.abmod
 ```
 
 Instalación: botón "+" en el panel izquierdo (sube el `.abmod`) o `POST /api/modules`. El instalador valida manifest (id, schemaVersion, duplicados) y dependencias; escribe con temp+rename (atómico). Desinstalar: `DELETE /api/modules/:id`.
 
 Tipos de módulo: `bible`, `lexicon`, `commentary`, `crossref`, `devotion`. Los módulos biblia definen el canon (66 libros OSIS) que alimenta la navegación y el Omnibar.
+
+### ETL de módulos reales (import-osis)
+
+El pipeline real importa biblias en **USFX** (XML de USFM) u **OSIS con milestones** hacia un `.abmod` instalable:
+
+```bash
+bun run import data/osis/spa-rv1909.usfx.xml RV1909 \
+  --name "Reina-Valera 1909" --lang es --license "Public Domain"
+```
+
+- Parser SAX streaming (`sax`): milestones de libro/capítulo/versículo en ambos formatos, CDATA, entidades Latin-1.
+- Tagging Strong: `<w s="H7225">` (USFX), `<w lemma="strong:G3056" morph>` / `<seg subType="x-strong:…">` (OSIS); notas/títulos excluidos.
+- El módulo se empaqueta/instala como cualquier otro (`bun run package <id>`).
+
+Fuentes libres probadas: RV1909 completo con Strongs (USFX, dominio público, `github.com/seven1m/open-bibles`); eBible.org publica OSIS con milestones para muchas traducciones libres.
 
 ### Flujo de datos
 
@@ -89,4 +106,4 @@ Tipos de módulo: `bible`, `lexicon`, `commentary`, `crossref`, `devotion`. Los 
 
 ## Roadmap
 
-Ver `TASK_LIST.md` (Fases 1–4 completas; Fase 5 en curso).
+Ver `TASK_LIST.md` (Fases 1–7 completas).

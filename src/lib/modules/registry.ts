@@ -52,8 +52,34 @@ function parseManifest(meta: Record<string, string>): ModuleManifest | null {
   };
 }
 
+/** Cache de info por módulo, invalidada por mtime del .db y del .state.json. */
+const infoCache = new Map<string, { dbMtime: number; stateMtime: number; info: ModuleInfo | null }>();
+
 /** Lee el manifest y canon de un módulo desde su DB (tolerante a tablas ausentes). */
 export function readModuleInfo(moduleId: string): ModuleInfo | null {
+  const file = path.join(MODULES_DIR, `${moduleId}.db`);
+  let dbMtime = 0;
+  try {
+    dbMtime = statSync(file).mtimeMs;
+  } catch {
+    return null;
+  }
+  let stateMtime = 0;
+  try {
+    stateMtime = statSync(STATE_FILE).mtimeMs;
+  } catch {
+    stateMtime = 0;
+  }
+  const cached = infoCache.get(moduleId);
+  if (cached && cached.dbMtime === dbMtime && cached.stateMtime === stateMtime) {
+    return cached.info;
+  }
+  const info = readModuleInfoUncached(moduleId);
+  infoCache.set(moduleId, { dbMtime, stateMtime, info });
+  return info;
+}
+
+function readModuleInfoUncached(moduleId: string): ModuleInfo | null {
   const db = openReadOnly(moduleId);
   if (!db) return null;
   try {

@@ -40,6 +40,7 @@ CREATE VIRTUAL TABLE IF NOT EXISTS versiculos_fts USING fts5(
 CREATE INDEX IF NOT EXISTS idx_versiculos_ref ON versiculos(libro_id, capitulo, versiculo);
 CREATE INDEX IF NOT EXISTS idx_palabras_strong ON palabras_interlineal(strong_id);
 CREATE INDEX IF NOT EXISTS idx_palabras_alineacion ON palabras_interlineal(alineacion_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_palabras_versiculo_pos ON palabras_interlineal(id_versiculo, posicion);
 `;
 
 export const SCHEMA_MODULE_META = `

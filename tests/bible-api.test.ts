@@ -53,15 +53,27 @@ describe("API /api/bible/read", () => {
 });
 
 describe("API /api/bible/search", () => {
-  test("búsqueda FTS5 español con comodín y cumple SLA < 30ms", async () => {
+  test("búsqueda FTS5 español con comodín sobre el texto completo y SLA < 30ms", async () => {
     const { status, body } = await searchApi(
       "http://localhost/api/bible/search?q=Esp%C3%ADritu&modules=RV1909",
     );
     assert.equal(status, 200);
-    const vv = body.results.map((r) => r.verse);
-    assert.ok(vv.includes(5));
-    assert.ok(vv.includes(34));
+    assert.ok(body.results.length > 0);
+    assert.ok(body.total > 100, `esperaba búsqueda sobre el texto completo (total=${body.total})`);
+    assert.ok(body.results[0].snippet.includes("<mark>"));
     assert.ok(body.durationMs < 30, `SLA search excedido: ${body.durationMs}ms`);
+  });
+
+  test("búsqueda insensible a acentos (Espiritu sin tilde → Espíritu)", async () => {
+    const { body } = await searchApi("http://localhost/api/bible/search?q=Espiritu&modules=RV1909");
+    assert.ok(body.results.length > 0, "sin resultados para 'Espiritu'");
+  });
+
+  test("búsqueda en el texto completo encuentra Nicodemo en Juan 3", async () => {
+    const { body } = await searchApi("http://localhost/api/bible/search?q=Nicodemo&modules=RV1909");
+    const vv = body.results.map((r) => r.verse);
+    assert.ok(vv.includes(1), `falta Jn 3:1 (versículos: ${vv.join(",")})`);
+    assert.ok(vv.includes(9), `falta Jn 3:9 (versículos: ${vv.join(",")})`);
   });
 
   test("búsqueda griega por prefijo (lemas/acentos)", async () => {

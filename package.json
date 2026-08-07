@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "seed": "node scripts/seed-test-db.ts",
+    "import": "node scripts/import-osis.ts",
     "package": "node scripts/package-module.ts",
     "test": "node --test \"tests/*.test.ts\""
   },
@@ -23,6 +24,7 @@
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "react-resizable-panels": "^4.12.2",
+    "sax": "^1.6.1",
     "zustand": "^5.0.14"
   },
   "devDependencies": {
@@ -31,6 +33,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/sax": "^1.2.7",
     "eslint": "^9",
     "eslint-config-next": "16.3.0",
     "tailwindcss": "^4",

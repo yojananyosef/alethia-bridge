@@ -128,13 +128,20 @@ function escapeTerm(term: string): string {
 
 /** Snippet con <mark> sobre la primera coincidencia, desde el texto original. */
 function buildSnippet(raw: string, term: string, radius = 48): string {
+  // Descomposición NFD: "í" → "i" + marca combinante; las marcas se saltan,
+  // y rawIdx conserva la posición original de cada letra base.
   const norm: string[] = [];
   const rawIdx: number[] = [];
-  for (let i = 0; i < raw.length; i++) {
-    const c = raw[i];
-    if (/\p{M}/u.test(c)) continue;
+  const flat = raw.normalize("NFD");
+  let i = 0;
+  for (const c of flat) {
+    if (/\p{M}/u.test(c)) {
+      i++;
+      continue;
+    }
     norm.push(c.toLowerCase());
     rawIdx.push(i);
+    i++;
   }
   const ns = norm.join("");
   const hit = ns.indexOf(term);
@@ -161,6 +168,7 @@ export function searchBible(queryRaw: string, modulesRaw: string | null, limit =
   const query = queryRaw.trim();
   const moduleIds = parseModules(modulesRaw);
   const results: SearchResult[] = [];
+  let total = 0;
 
   if (query.length === 0) {
     return { query, moduleIds, total: 0, results, durationMs: performance.now() - t0 };
@@ -171,6 +179,10 @@ export function searchBible(queryRaw: string, modulesRaw: string | null, limit =
   if (strongMatch) {
     for (const moduleId of moduleIds) {
       const db = getModuleDb(moduleId);
+      const count = (db
+        .prepare(`SELECT COUNT(*) AS c FROM palabras_interlineal WHERE strong_id = ?`)
+        .get(strongMatch[0].toUpperCase()) as { c: number }).c;
+      total += count;
       const rows = db
         .prepare(
           `SELECT v.libro_id, v.capitulo, v.versiculo, v.texto_plano
@@ -203,6 +215,9 @@ export function searchBible(queryRaw: string, modulesRaw: string | null, limit =
 
     for (const moduleId of moduleIds) {
       const db = getModuleDb(moduleId);
+      total += (db
+        .prepare(`SELECT COUNT(*) AS c FROM versiculos_fts WHERE versiculos_fts MATCH ?`)
+        .get(matchExpr) as { c: number }).c;
       const rows = db
         .prepare(
           `SELECT v.id_versiculo, v.libro_id, v.capitulo, v.versiculo, v.texto_plano,
@@ -243,7 +258,6 @@ export function searchBible(queryRaw: string, modulesRaw: string | null, limit =
   }
 
   results.sort((a, b) => a.score - b.score || a.reference.localeCompare(b.reference));
-  const total = results.length;
   return { query, moduleIds, total, results: results.slice(0, limit), durationMs: performance.now() - t0 };
 }
 

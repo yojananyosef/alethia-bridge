@@ -61,8 +61,25 @@ Monolito modular Next.js 16 (App Router) + TypeScript strict + RSC + Zustand + T
 - [x] Service: `MODULE_LANGUAGES` y módulos válidos reemplazados por resolución vía registry
 - [x] Tests: list/toggle/install/uninstall/rechazo de paquetes inválidos (11/11) + `bun run build` OK
 
+## FASE 7 — ETL Real: Importador USFX/OSIS + módulo real RV1909 ✅
+- [x] `src/lib/canon.ts`: canon 66 libros compartido (id interno + código USFX + nombre OSIS + capítulos)
+- [x] `scripts/import-osis.ts` reescrito de cero: parser SAX real (`sax`, streaming, tolerante)
+  - [x] Milestones USFX (`<v id>`/`<ve>`, `<c id>`, `<book id>`) y OSIS (`<verse sID/eID>`, `<div type=book>`, `<chapter>`)
+  - [x] Tagging Strong: `<w s="H7225">` (USFX) / `<w lemma="strong:G3056" morph>` / `<seg subType="x-strong:G3056">` (OSIS)
+  - [x] Notas y títulos excluidos (note/f/x/title/h/toc/id/figure); CDATA y entidades Latin-1
+  - [x] Lemas resueltos desde lexicon.db (cacheados); strongs normalizados (H0430→H430)
+  - [x] Escribe manifest (meta) + canon (libros) → módulo instalable y empaquetable directamente
+- [x] **Módulo real**: RV1909 completo con Strongs (USFX, dominio público, open-bibles) → 31.084 versículos, 704.402 tokens, 66 libros (9s de import)
+- [x] Fix rendimiento: índice UNIQUE `(id_versiculo, posicion)` — lookup de tokens pasó de scan completo (150ms) a µs
+- [x] Fix snippet: `buildSnippet` con NFD (letras precompuestas con acento: "Espíritu"→espiritu)
+- [x] `/api/bible/search` devuelve `total` real (COUNT FTS) — preparado para paginación
+- [x] Cache de registry por mtime (instalar/desinstalar/toggle invalidan automáticamente)
+- [x] Empaquetado: `dist-modules/RV1909-1.0.0.abmod` (30 MB)
+- [x] **Validación:** 13/13 tests + SLA read <10ms / search <30ms con el texto completo + curl E2E + build OK
+
 ## Próximos pasos (roadmap módulos)
-- [ ] Importador USFM/MyBible + OSIS milestones (ETL generalizado)
 - [ ] Tipos de módulo `commentary`/`crossref`/`devotion` con renderizado dedicado
 - [ ] Registry remoto con checksums SHA-256 y actualizaciones por versión
 - [ ] Datos de usuario keyeados por `moduleId + osisRef` (independientes de la versión del módulo)
+- [ ] Tokenización por idioma + alineación interlineal generalizada multi-módulo
+- [ ] Importador SWORD binario (CrossWire Raw ZIP) solo para textos sin fuente XML
