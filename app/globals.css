@@ -1,0 +1,44 @@
+@import "tailwindcss";
+
+/* ===== Variables de tema (academic-paper / dark-contrast / sepia) ===== */
+:root,
+[data-theme="academic-paper"] {
+  --bg: #fafaf9;
+  --panel: #ffffff;
+  --border: #e7e5e4;
+  --ink: #1c1917;
+  --muted: #78716c;
+  --accent: #b45309;
+  --accent-soft: rgba(180, 83, 9, 0.12);
+}
+
+[data-theme="dark-contrast"] {
+  --bg: #09090b;
+  --panel: #131316;
+  --border: #27272a;
+  --ink: #fafafa;
+  --muted: #a1a1aa;
+  --accent: #f59e0b;
+  --accent-soft: rgba(245, 158, 11, 0.16);
+}
+
+[data-theme="sepia"] {
+  --bg: #f4ecd8;
+  --panel: #fbf5e6;
+  --border: #ddd0b4;
+  --ink: #3d2c1e;
+  --muted: #8a7357;
+  --accent: #9a5b1e;
+  --accent-soft: rgba(154, 91, 30, 0.14);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}

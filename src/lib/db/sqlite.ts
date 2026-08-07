@@ -1,0 +1,124 @@
+import { mkdirSync } from "node:fs";
+import path from "node:path";
+import Database from "better-sqlite3";
+
+export const MODULES_DIR = path.join(process.cwd(), "data", "modules");
+
+export const SCHEMA_VERSICULOS = `
+CREATE TABLE IF NOT EXISTS versiculos (
+  id_versiculo INTEGER PRIMARY KEY AUTOINCREMENT,
+  libro_id TEXT NOT NULL,
+  capitulo INTEGER NOT NULL,
+  versiculo INTEGER NOT NULL,
+  texto_plano TEXT NOT NULL,
+  texto_norm TEXT NOT NULL,
+  UNIQUE(libro_id, capitulo, versiculo)
+);
+
+CREATE TABLE IF NOT EXISTS palabras_interlineal (
+  id_palabra INTEGER PRIMARY KEY AUTOINCREMENT,
+  id_versiculo INTEGER NOT NULL,
+  posicion INTEGER NOT NULL,
+  texto_superficie TEXT NOT NULL,
+  lema TEXT,
+  strong_id TEXT,
+  morph_code TEXT,
+  alineacion_id TEXT NOT NULL,
+  FOREIGN KEY(id_versiculo) REFERENCES versiculos(id_versiculo)
+);
+
+CREATE VIRTUAL TABLE IF NOT EXISTS versiculos_fts USING fts5(
+  libro_id UNINDEXED,
+  capitulo UNINDEXED,
+  versiculo UNINDEXED,
+  texto_norm,
+  content='versiculos',
+  content_rowid='id_versiculo',
+  tokenize='unicode61'
+);
+
+CREATE INDEX IF NOT EXISTS idx_versiculos_ref ON versiculos(libro_id, capitulo, versiculo);
+CREATE INDEX IF NOT EXISTS idx_palabras_strong ON palabras_interlineal(strong_id);
+CREATE INDEX IF NOT EXISTS idx_palabras_alineacion ON palabras_interlineal(alineacion_id);
+`;
+
+export const SCHEMA_LEXICON = `
+CREATE TABLE IF NOT EXISTS diccionario (
+  strong_id TEXT PRIMARY KEY,
+  lema TEXT NOT NULL,
+  transliteracion TEXT NOT NULL,
+  pronunciacion TEXT,
+  definicion_corta TEXT NOT NULL,
+  definicion_detallada TEXT,
+  dominio_semantico TEXT,
+  idioma TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS parsing_gramatical (
+  morph_code TEXT PRIMARY KEY,
+  descripcion_espanol TEXT NOT NULL,
+  categoria_gramatical TEXT NOT NULL
+);
+`;
+
+export const FTS_TRIGGERS = `
+CREATE TRIGGER IF NOT EXISTS versiculos_ai AFTER INSERT ON versiculos BEGIN
+  INSERT INTO versiculos_fts(rowid, libro_id, capitulo, versiculo, texto_norm)
+  VALUES (new.id_versiculo, new.libro_id, new.capitulo, new.versiculo, new.texto_norm);
+END;
+
+CREATE TRIGGER IF NOT EXISTS versiculos_ad AFTER DELETE ON versiculos BEGIN
+  INSERT INTO versiculos_fts(versiculos_fts, rowid, libro_id, capitulo, versiculo, texto_norm)
+  VALUES ('delete', old.id_versiculo, old.libro_id, old.capitulo, old.versiculo, old.texto_norm);
+END;
+
+CREATE TRIGGER IF NOT EXISTS versiculos_au AFTER UPDATE ON versiculos BEGIN
+  INSERT INTO versiculos_fts(versiculos_fts, rowid, libro_id, capitulo, versiculo, texto_norm)
+  VALUES ('delete', old.id_versiculo, old.libro_id, old.capitulo, old.versiculo, old.texto_norm);
+  INSERT INTO versiculos_fts(rowid, libro_id, capitulo, versiculo, texto_norm)
+  VALUES (new.id_versiculo, new.libro_id, new.capitulo, new.versiculo, new.texto_norm);
+END;
+`;
+
+/** Normaliza texto para indexado FTS y búsqueda: NFD, sin diacríticos, minúsculas. */
+export function normalizeText(text: string): string {
+  return text.normalize("NFD").replace(/\p{M}/gu, "").normalize("NFC").toLowerCase();
+}
+
+const moduleCache = new Map<string, Database.Database>();
+
+function openDb(file: string): Database.Database {
+  mkdirSync(path.dirname(file), { recursive: true });
+  const db = new Database(file);
+  db.pragma("journal_mode = WAL");
+  db.pragma("synchronous = NORMAL");
+  db.pragma("busy_timeout = 5000");
+  db.pragma("foreign_keys = ON");
+  return db;
+}
+
+export function getModuleDb(moduleId: string): Database.Database {
+  let db = moduleCache.get(moduleId);
+  if (!db) {
+    db = openDb(path.join(MODULES_DIR, `${moduleId}.db`));
+    moduleCache.set(moduleId, db);
+  }
+  return db;
+}
+
+export function getLexiconDb(): Database.Database {
+  return getModuleDb("lexicon");
+}
+
+export function initModuleDb(moduleId: string): Database.Database {
+  const db = getModuleDb(moduleId);
+  db.exec(SCHEMA_VERSICULOS);
+  db.exec(FTS_TRIGGERS);
+  return db;
+}
+
+export function initLexiconDb(): Database.Database {
+  const db = getLexiconDb();
+  db.exec(SCHEMA_LEXICON);
+  return db;
+}
