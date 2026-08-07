@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { Columns3, Rows3 } from "lucide-react";
 import { ToggleGroup, ToggleGroupItem } from "../components/ui/toggle-group";
 import { useExegesisStore } from "../store/useExegesisStore";
@@ -23,7 +23,9 @@ function VerseText({
     <>
       <span dir={dir}>
         {verse.tokens.map((t) => (
-          <WordTokenView key={t.id} token={t} dir={dir} withLabels={withLabels} />
+          <Fragment key={t.id}>
+            <WordTokenView token={t} dir={dir} withLabels={withLabels} />{" "}
+          </Fragment>
         ))}
         {!isLast && " "}
       </span>
@@ -105,8 +107,12 @@ function VerseView({
   if (!verses.some((x) => x.verse)) return null;
 
   if (layout === "columns") {
+    const colCount = Math.max(1, verses.filter((v) => v.verse).length);
     return (
-      <div className="mb-4 grid grid-cols-2 gap-x-6 gap-y-1 border-b border-border pb-3 last:border-b-0 xl:grid-cols-3 2xl:grid-cols-4">
+      <div
+        className="mb-4 grid gap-x-6 gap-y-1 border-b border-border pb-3 last:border-b-0"
+        style={{ gridTemplateColumns: `repeat(${colCount}, minmax(0, 1fr))` }}
+      >
         {verses.map((v, i) => {
           if (!v.verse) return null;
           return (
@@ -126,20 +132,23 @@ function VerseView({
   }
 
   return (
-    <div className="mb-3">
-      <span className="float-left mr-1.5 text-sm font-bold text-primary">{verseNo}</span>
-      {verses.map((v, i) => {
-        if (!v.verse) return null;
-        return (
-          <VerseText
-            key={i}
-            verse={v.verse}
-            dir={v.dir}
-            withLabels={v.withLabels}
-            isLast={i === verses.length - 1}
-          />
-        );
-      })}
+    <div className="mb-4 flex gap-2">
+      <span className="text-sm font-bold text-primary">{verseNo}</span>
+      <div className="min-w-0 flex-1">
+        {verses.map((v, i) => {
+          if (!v.verse) return null;
+          return (
+            <div key={i} className={i > 0 ? "mt-1.5" : ""}>
+              <VerseText
+                verse={v.verse}
+                dir={v.dir}
+                withLabels={v.withLabels}
+                isLast={i === verses.length - 1}
+              />
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

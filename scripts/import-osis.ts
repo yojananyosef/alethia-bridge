@@ -126,6 +126,8 @@ interface ParserState {
   vText: string;
   vTokens: WordToken[];
   plainBuffer: string;
+  /** Último <seg> abierto era un marcador de parashá (se descarta al cerrar). */
+  segSkipped: boolean;
   wordText: string;
   wordStrong: string | null;
   wordMorph: string | null;
@@ -169,6 +171,7 @@ function buildParser(
     vText: "",
     vTokens: [],
     plainBuffer: "",
+    segSkipped: false,
     wordText: "",
     wordStrong: null,
     wordMorph: null,
@@ -338,6 +341,15 @@ function buildParser(
         break;
       }
       case "seg": {
+        // Marcadores de parashá del WLC: <seg type="x-pe">פ</seg> / x-samekh (ס).
+        // Son indicaciones de sección de lectura, no texto del versículo.
+        const segType = String(attrs.type ?? "").trim();
+        if (segType === "x-pe" || segType === "x-samekh") {
+          state.skipDepth++;
+          state.segSkipped = true;
+          break;
+        }
+        state.segSkipped = false;
         // OSIS interlinear: <seg subType="x-strong:G3056">texto</seg>
         const strong = strongFromAttrs(attrs);
         if (strong) {
@@ -357,7 +369,14 @@ function buildParser(
 
   parser.onclosetag = (name: string): void => {
     const tag = localName(name);
-    if (tag === "w" || tag === "seg") {
+    if (tag === "seg") {
+      if (state.segSkipped) {
+        state.skipDepth--;
+        state.segSkipped = false;
+      } else {
+        flushWord();
+      }
+    } else if (tag === "w") {
       flushWord();
     } else if (tag === "verse") {
       if (state.verseMilestone) {

@@ -53,6 +53,8 @@ export interface LexiconEntry {
   shortDefinition: string;
   detailedDefinition: string | null;
   semanticDomain: string | null;
+  /** Glosa de traducción derivada del módulo RV1909 (formas más frecuentes). */
+  glosa: string | null;
   language: "HEBREW" | "GREEK";
 }
 

@@ -6,8 +6,8 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
+import { SidebarContent, SidebarHeader, SidebarTrigger } from "../components/ui/sidebar";
 import { Skeleton } from "../components/ui/skeleton";
-import { PanelHeader } from "./PanelHeader";
 import { useExegesisStore } from "../store/useExegesisStore";
 import { addNote, notesForVerse } from "../lib/db/dexie-user-db";
 import type { UserNote } from "../lib/db/dexie-user-db";
@@ -93,9 +93,16 @@ export function PanelRightAnalysis() {
   };
 
   return (
-    <aside className="flex h-full flex-col border-l border-border bg-card">
-      <PanelHeader>Análisis</PanelHeader>
-      <div className="flex-1 overflow-y-auto p-3">
+    <>
+      <SidebarHeader className="border-b border-border">
+        <div className="flex h-8 items-center justify-between gap-2 px-2">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Análisis
+          </span>
+          <SidebarTrigger className="size-6" title="Ocultar análisis" />
+        </div>
+      </SidebarHeader>
+      <SidebarContent className="overflow-y-auto p-3">
         {activeLexiconTerm ? (
           lexicon ? (
             <div className="rounded border border-border p-3">
@@ -107,6 +114,11 @@ export function PanelRightAnalysis() {
                 {lexicon.transliteration}
                 {lexicon.pronunciation ? ` · ${lexicon.pronunciation}` : ""}
               </div>
+              {lexicon.glosa && (
+                <p className="mt-2 text-sm font-semibold text-primary">
+                  {lexicon.glosa}
+                </p>
+              )}
               <p className="mt-2 text-sm">{lexicon.shortDefinition}</p>
               {lexicon.detailedDefinition && (
                 <p className="mt-2 text-xs text-muted-foreground">
@@ -176,7 +188,7 @@ export function PanelRightAnalysis() {
             </ul>
           )}
         </div>
-      </div>
-    </aside>
+      </SidebarContent>
+    </>
   );
 }

@@ -39,3 +39,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# bible modules (binary artifacts, regenerable via scripts/)
+data/modules/*.db
+data/modules/*.db-shm
+data/modules/*.db-wal

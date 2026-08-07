@@ -293,6 +293,15 @@ export function getLexiconEntry(strongId: string): LexiconEntry | null {
     | LexiconRow
     | undefined;
   if (!row) return null;
+  let glosa: string | null = null;
+  try {
+    const glosaRow = getLexiconDb()
+      .prepare(`SELECT glosa FROM glosas WHERE strong_id = ?`)
+      .get(strongId) as { glosa: string } | undefined;
+    glosa = glosaRow?.glosa ?? null;
+  } catch {
+    // tabla glosas ausente (lexicon.db sin derivar) — la glosa es opcional
+  }
   return {
     strongId: row.strong_id,
     lemma: row.lema,
@@ -301,6 +310,7 @@ export function getLexiconEntry(strongId: string): LexiconEntry | null {
     shortDefinition: row.definicion_corta,
     detailedDefinition: row.definicion_detallada,
     semanticDomain: row.dominio_semantico,
+    glosa,
     language: row.idioma,
   };
 }
