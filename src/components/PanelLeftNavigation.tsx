@@ -314,9 +314,6 @@ export function PanelLeftNavigation() {
               Biblioteca & Canon
             </span>
           </div>
-          <span className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-[9px] text-muted-foreground">
-            {primary?.id ?? "RV1909"}
-          </span>
         </div>
       </SidebarHeader>
 
