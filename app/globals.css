@@ -1,15 +1,52 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-/* ===== Variables de tema (academic-paper / dark-contrast / sepia) ===== */
+@custom-variant dark (&:is(.dark *));
+
+/* ===== Variables de tema (academic-paper / dark-contrast / sepia) =====
+   Los tokens propios (--bg/--panel/--ink/--accent…) alimentan los tokens
+   semánticos shadcn: bg-background, text-foreground, text-primary, etc. */
 :root,
 [data-theme="academic-paper"] {
   --bg: #fafaf9;
   --panel: #ffffff;
   --border: #e7e5e4;
   --ink: #1c1917;
-  --muted: #78716c;
-  --accent: #b45309;
-  --accent-soft: rgba(180, 83, 9, 0.12);
+  --ink-muted: #78716c;
+  --amber: #b45309;
+  --amber-soft: rgba(180, 83, 9, 0.12);
+  --amber-hover: var(--amber-soft);
+
+  --background: var(--bg);
+  --foreground: var(--ink);
+  --card: var(--panel);
+  --card-foreground: var(--ink);
+  --popover: var(--panel);
+  --popover-foreground: var(--ink);
+  --primary: var(--amber);
+  --primary-foreground: #ffffff;
+  --secondary: #f5f5f4;
+  --secondary-foreground: var(--ink);
+  --muted: #f5f5f4;
+  --muted-foreground: var(--ink-muted);
+  --accent: var(--amber-soft);
+  --accent-foreground: var(--amber);
+  --input: var(--border);
+  --ring: var(--primary);
+  --chart-1: #b45309;
+  --chart-2: #78716c;
+  --chart-3: #d6d3d1;
+  --chart-4: #57534e;
+  --chart-5: #a8a29e;
+  --sidebar: var(--panel);
+  --sidebar-foreground: var(--ink);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: var(--amber-soft);
+  --sidebar-accent-foreground: var(--ink);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--primary);
 }
 
 [data-theme="dark-contrast"] {
@@ -17,9 +54,40 @@
   --panel: #131316;
   --border: #27272a;
   --ink: #fafafa;
-  --muted: #a1a1aa;
-  --accent: #f59e0b;
-  --accent-soft: rgba(245, 158, 11, 0.16);
+  --ink-muted: #a1a1aa;
+  --amber: #f59e0b;
+  --amber-soft: rgba(245, 158, 11, 0.16);
+  --amber-hover: var(--amber-soft);
+
+  --background: var(--bg);
+  --foreground: var(--ink);
+  --card: var(--panel);
+  --card-foreground: var(--ink);
+  --popover: var(--panel);
+  --popover-foreground: var(--ink);
+  --primary: var(--amber);
+  --primary-foreground: #1c1917;
+  --secondary: #1c1c1f;
+  --secondary-foreground: var(--ink);
+  --muted: #1c1c1f;
+  --muted-foreground: var(--ink-muted);
+  --accent: var(--amber-soft);
+  --accent-foreground: var(--amber);
+  --input: var(--border);
+  --ring: var(--primary);
+  --chart-1: #f59e0b;
+  --chart-2: #a1a1aa;
+  --chart-3: #3f3f46;
+  --chart-4: #71717a;
+  --chart-5: #52525b;
+  --sidebar: var(--panel);
+  --sidebar-foreground: var(--ink);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: #1c1917;
+  --sidebar-accent: var(--amber-soft);
+  --sidebar-accent-foreground: var(--ink);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--primary);
 }
 
 [data-theme="sepia"] {
@@ -27,9 +95,46 @@
   --panel: #fbf5e6;
   --border: #ddd0b4;
   --ink: #3d2c1e;
-  --muted: #8a7357;
-  --accent: #9a5b1e;
-  --accent-soft: rgba(154, 91, 30, 0.14);
+  --ink-muted: #8a7357;
+  --amber: #9a5b1e;
+  --amber-soft: rgba(154, 91, 30, 0.14);
+  --amber-hover: var(--amber-soft);
+
+  --background: var(--bg);
+  --foreground: var(--ink);
+  --card: var(--panel);
+  --card-foreground: var(--ink);
+  --popover: var(--panel);
+  --popover-foreground: var(--ink);
+  --primary: var(--amber);
+  --primary-foreground: #ffffff;
+  --secondary: #efe6cf;
+  --secondary-foreground: var(--ink);
+  --muted: #efe6cf;
+  --muted-foreground: var(--ink-muted);
+  --accent: var(--amber-soft);
+  --accent-foreground: var(--amber);
+  --input: var(--border);
+  --ring: var(--primary);
+  --chart-1: #9a5b1e;
+  --chart-2: #8a7357;
+  --chart-3: #ddd0b4;
+  --chart-4: #6b5538;
+  --chart-5: #b09b7f;
+  --sidebar: var(--panel);
+  --sidebar-foreground: var(--ink);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: var(--amber-soft);
+  --sidebar-accent-foreground: var(--ink);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--primary);
+}
+
+/* Tokens base compartidos por todos los temas. */
+:root {
+  --radius: 0.625rem;
+  --destructive: oklch(0.577 0.245 27.325);
 }
 
 html,
@@ -42,3 +147,47 @@ body {
   color: var(--ink);
   font-family: var(--font-geist-sans), system-ui, sans-serif;
 }
+
+@theme inline {
+  --font-heading: var(--font-sans);
+  --font-sans: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+

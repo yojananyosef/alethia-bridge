@@ -1,9 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { BookMarked } from "lucide-react";
+import { BookMarked, MousePointerClick } from "lucide-react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
+import { Badge } from "../components/ui/badge";
+import { Button } from "../components/ui/button";
+import { Skeleton } from "../components/ui/skeleton";
+import { PanelHeader } from "./PanelHeader";
 import { useExegesisStore } from "../store/useExegesisStore";
 import { addNote, notesForVerse } from "../lib/db/dexie-user-db";
 import type { UserNote } from "../lib/db/dexie-user-db";
@@ -89,36 +93,37 @@ export function PanelRightAnalysis() {
   };
 
   return (
-    <aside className="flex h-full flex-col border-l border-[var(--border)] bg-[var(--panel)]">
-      <div className="border-b border-[var(--border)] px-3 py-2 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
-        Análisis
-      </div>
+    <aside className="flex h-full flex-col border-l border-border bg-card">
+      <PanelHeader>Análisis</PanelHeader>
       <div className="flex-1 overflow-y-auto p-3">
         {activeLexiconTerm ? (
           lexicon ? (
-            <div className="rounded border border-[var(--border)] p-3">
-              <div className="flex items-center gap-1 text-xs font-bold text-[var(--accent)]">
+            <div className="rounded border border-border p-3">
+              <div className="flex items-center gap-1 text-xs font-bold text-primary">
                 <BookMarked className="h-3.5 w-3.5" />
                 {lexicon.strongId} · {lexicon.lemma}
               </div>
-              <div className="text-xs text-[var(--muted)]">
+              <div className="text-xs text-muted-foreground">
                 {lexicon.transliteration}
                 {lexicon.pronunciation ? ` · ${lexicon.pronunciation}` : ""}
               </div>
               <p className="mt-2 text-sm">{lexicon.shortDefinition}</p>
               {lexicon.detailedDefinition && (
-                <p className="mt-2 text-xs text-[var(--muted)]">
+                <p className="mt-2 text-xs text-muted-foreground">
                   {lexicon.detailedDefinition}
                 </p>
               )}
               {lexicon.semanticDomain && (
-                <div className="mt-2 inline-block rounded bg-[var(--accent-soft)] px-2 py-0.5 text-[10px] text-[var(--accent)]">
+                <Badge
+                  variant="outline"
+                  className="mt-2 border-transparent bg-accent text-primary"
+                >
                   {lexicon.semanticDomain}
-                </div>
+                </Badge>
               )}
               {morph && (
-                <div className="mt-3 border-t border-[var(--border)] pt-2 text-xs">
-                  <span className="font-mono text-[10px] text-[var(--muted)]">
+                <div className="mt-3 border-t border-border pt-2 text-xs">
+                  <span className="font-mono text-[10px] text-muted-foreground">
                     {morph.code}
                   </span>
                   <span className="ml-1">{morph.description}</span>
@@ -126,40 +131,44 @@ export function PanelRightAnalysis() {
               )}
             </div>
           ) : (
-            <p className="text-xs text-[var(--muted)]">Cargando léxico…</p>
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-2/3" />
+              <Skeleton className="h-4 w-1/2" />
+              <Skeleton className="h-4 w-3/4" />
+            </div>
           )
         ) : (
-          <p className="text-xs text-[var(--muted)]">
-            Haz clic en una palabra griega para ver su análisis
-            léxico-morfológico.
-          </p>
+          <div className="flex h-full flex-col items-center justify-center gap-1.5 text-center">
+            <MousePointerClick className="h-4 w-4 text-muted-foreground" />
+            <p className="text-xs text-muted-foreground">
+              Haz clic en una palabra griega para ver su análisis
+              léxico-morfológico.
+            </p>
+          </div>
         )}
 
         <div className="mt-4">
-          <div className="mb-1 text-xs font-semibold text-[var(--muted)]">
+          <div className="mb-1 text-xs font-semibold text-muted-foreground">
             Notas de {verseId}
           </div>
-          <div className="rounded border border-[var(--border)] p-2">
+          <div className="rounded border border-border p-2">
             <EditorContent
               editor={editor}
               className="min-h-16 text-sm outline-none"
             />
-            <button
-              onClick={() => void saveNote()}
-              className="mt-2 rounded bg-[var(--accent)] px-2 py-1 text-xs font-medium text-white"
-            >
+            <Button size="sm" onClick={() => void saveNote()} className="mt-2">
               Guardar nota
-            </button>
+            </Button>
           </div>
           {notes.length > 0 && (
             <ul className="mt-2 space-y-1">
               {notes.map((n) => (
                 <li
                   key={n.id}
-                  className="rounded border border-[var(--border)] bg-[var(--bg)] p-2 text-xs"
+                  className="rounded border border-border bg-background p-2 text-xs"
                 >
                   <div dangerouslySetInnerHTML={{ __html: n.content_html }} />
-                  <span className="mt-1 block text-[10px] text-[var(--muted)]">
+                  <span className="mt-1 block text-[10px] text-muted-foreground">
                     {new Date(n.updated_at).toLocaleString()}
                   </span>
                 </li>

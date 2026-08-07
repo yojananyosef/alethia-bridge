@@ -6,9 +6,9 @@ export default function Home() {
   return (
     <div className="flex h-screen flex-col">
       <ThemeApplier />
-      <header className="flex items-center justify-between border-b border-[var(--border)] bg-[var(--panel)] px-4 py-2">
+      <header className="flex items-center justify-between border-b border-border bg-card px-4 py-2">
         <div className="text-sm font-bold tracking-tight">
-          Alethia<span className="text-[var(--accent)]">Bridge</span>
+          Alethia<span className="text-primary">Bridge</span>
         </div>
         <Omnibar />
       </header>

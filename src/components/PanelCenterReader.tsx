@@ -2,19 +2,32 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Columns3, Rows3 } from "lucide-react";
+import { ToggleGroup, ToggleGroupItem } from "../components/ui/toggle-group";
 import { useExegesisStore } from "../store/useExegesisStore";
 import type { InterlinearModule, ReadResponse, VersePayload } from "../types/bible";
 import type { ModuleInfo } from "../types/module";
 import { WordTokenView } from "./interlinear/WordTokenView";
 
-function VerseText({ verse, isLast }: { verse: VersePayload; isLast: boolean }) {
-  const isGreek = verse.tokens.some((t) => /[\u0370-\u03FF\u1F00-\u1FFF]/u.test(t.text));
+function VerseText({
+  verse,
+  isLast,
+  dir,
+  withLabels,
+}: {
+  verse: VersePayload;
+  isLast: boolean;
+  dir: "ltr" | "rtl";
+  withLabels: boolean;
+}) {
   return (
     <>
-      {verse.tokens.map((t) => (
-        <WordTokenView key={t.id} token={t} isGreek={isGreek} />
-      ))}
-      {!isLast && " "}
+      <span dir={dir}>
+        {verse.tokens.map((t) => (
+          <WordTokenView key={t.id} token={t} dir={dir} withLabels={withLabels} />
+        ))}
+        {!isLast && " "}
+      </span>
+      {dir === "rtl" && " "}
     </>
   );
 }
@@ -33,31 +46,41 @@ function ModuleBar({
 }) {
   const bibles = modules.filter((m) => m.type === "bible" && m.status === "installed");
   return (
-    <div className="flex flex-wrap items-center gap-1.5">
+    <ToggleGroup
+      size="sm"
+      variant="outline"
+      multiple
+      value={activeModules}
+      onValueChange={(next) => {
+        const changed = bibles.find(
+          (m) => next.includes(m.id) !== activeModules.includes(m.id),
+        );
+        if (changed) toggleModule(changed.id);
+      }}
+      aria-label="Módulos bíblicos activos"
+    >
       {bibles.map((m) => {
         const active = activeModules.includes(m.id);
         return (
-          <button
+          <ToggleGroupItem
             key={m.id}
-            onClick={() => toggleModule(m.id)}
+            value={m.id}
             title={`${active ? "Quitar" : "Añadir"} ${m.name} (${LANG_LABEL[m.language] ?? m.language})`}
-            className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] transition-colors ${
-              active
-                ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]"
-                : "border-[var(--border)] text-[var(--muted)] hover:border-[var(--accent)]"
-            }`}
+            className="gap-1.5 px-2.5"
           >
             <span
               className={`inline-block h-1.5 w-1.5 rounded-full ${
-                active ? "bg-[var(--accent)]" : "bg-[var(--muted)]/40"
+                active ? "bg-primary" : "bg-muted-foreground/40"
               }`}
             />
             {m.id}
-            <span className="opacity-70">{LANG_LABEL[m.language] ?? ""}</span>
-          </button>
+            <span className="text-muted-foreground opacity-70">
+              {LANG_LABEL[m.language] ?? ""}
+            </span>
+          </ToggleGroupItem>
         );
       })}
-    </div>
+    </ToggleGroup>
   );
 }
 
@@ -71,20 +94,30 @@ function VerseView({
   layout: "interleaved" | "columns";
 }) {
   const verses = useMemo(
-    () => modules.map((m) => m.verses.find((v) => v.verse === verseNo)),
+    () =>
+      modules.map((m) => ({
+        verse: m.verses.find((v) => v.verse === verseNo),
+        dir: (m.language === "he" ? "rtl" : "ltr") as "ltr" | "rtl",
+        withLabels: m.language === "el" || m.language === "he",
+      })),
     [modules, verseNo],
   );
-  if (!verses.some(Boolean)) return null;
+  if (!verses.some((x) => x.verse)) return null;
 
   if (layout === "columns") {
     return (
-      <div className="mb-4 grid grid-cols-2 gap-x-6 gap-y-1 border-b border-[var(--border)] pb-3 last:border-b-0 xl:grid-cols-3 2xl:grid-cols-4">
+      <div className="mb-4 grid grid-cols-2 gap-x-6 gap-y-1 border-b border-border pb-3 last:border-b-0 xl:grid-cols-3 2xl:grid-cols-4">
         {verses.map((v, i) => {
-          if (!v) return null;
+          if (!v.verse) return null;
           return (
             <div key={i}>
-              <span className="mr-1.5 text-xs font-bold text-[var(--accent)]">{v.verse}</span>
-              <VerseText verse={v} isLast={i === verses.length - 1} />
+              <span className="mr-1.5 text-xs font-bold text-primary">{v.verse.verse}</span>
+              <VerseText
+                verse={v.verse}
+                dir={v.dir}
+                withLabels={v.withLabels}
+                isLast={i === verses.length - 1}
+              />
             </div>
           );
         })}
@@ -94,10 +127,18 @@ function VerseView({
 
   return (
     <div className="mb-3">
-      <span className="float-left mr-1.5 text-sm font-bold text-[var(--accent)]">{verseNo}</span>
+      <span className="float-left mr-1.5 text-sm font-bold text-primary">{verseNo}</span>
       {verses.map((v, i) => {
-        if (!v) return null;
-        return <VerseText key={i} verse={v} isLast={i === verses.length - 1} />;
+        if (!v.verse) return null;
+        return (
+          <VerseText
+            key={i}
+            verse={v.verse}
+            dir={v.dir}
+            withLabels={v.withLabels}
+            isLast={i === verses.length - 1}
+          />
+        );
       })}
     </div>
   );
@@ -147,11 +188,11 @@ export function PanelCenterReader() {
   const verses = data?.modules[0]?.verses ?? [];
 
   return (
-    <main className="flex h-full flex-col bg-[var(--bg)]">
-      <header className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-[var(--border)] bg-[var(--panel)] px-4 py-2">
+    <main className="flex h-full flex-col bg-background">
+      <header className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border bg-card px-4 py-2">
         <h1 className="text-sm font-semibold">
           {syncGroupA.book} {syncGroupA.chapter}
-          <span className="ml-2 text-xs font-normal text-[var(--muted)]">
+          <span className="ml-2 text-xs font-normal text-muted-foreground">
             {data ? `${data.durationMs.toFixed(1)}ms` : ""}
           </span>
         </h1>
@@ -161,34 +202,29 @@ export function PanelCenterReader() {
           toggleModule={toggleModule}
         />
         <div className="ml-auto flex items-center gap-1">
-          <button
-            onClick={() => setReaderLayout("interleaved")}
-            title="Vista interlineal (textos en línea)"
-            className={`rounded border px-1.5 py-1 ${
-              readerLayout === "interleaved"
-                ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]"
-                : "border-[var(--border)] text-[var(--muted)] hover:border-[var(--accent)]"
-            }`}
+          <ToggleGroup
+            size="sm"
+            variant="outline"
+            value={[readerLayout]}
+            onValueChange={(next) => {
+              const v = next[0];
+              if (v === "interleaved" || v === "columns") setReaderLayout(v);
+            }}
+            aria-label="Disposición del lector"
           >
-            <Rows3 className="h-3.5 w-3.5" />
-          </button>
-          <button
-            onClick={() => setReaderLayout("columns")}
-            title="Vista paralela (columnas por módulo)"
-            className={`rounded border px-1.5 py-1 ${
-              readerLayout === "columns"
-                ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]"
-                : "border-[var(--border)] text-[var(--muted)] hover:border-[var(--accent)]"
-            }`}
-          >
-            <Columns3 className="h-3.5 w-3.5" />
-          </button>
+            <ToggleGroupItem value="interleaved" title="Vista interlineal (textos en línea)">
+              <Rows3 className="size-3.5" />
+            </ToggleGroupItem>
+            <ToggleGroupItem value="columns" title="Vista paralela (columnas por módulo)">
+              <Columns3 className="size-3.5" />
+            </ToggleGroupItem>
+          </ToggleGroup>
         </div>
       </header>
       <div className="flex-1 overflow-y-auto px-6 py-4 leading-relaxed">
-        {error ? <p className="text-sm text-red-500">{error}</p> : null}
+        {error ? <p className="text-sm text-destructive">{error}</p> : null}
         {data && verses.length === 0 && (
-          <p className="text-sm text-[var(--muted)]">
+          <p className="text-sm text-muted-foreground">
             Los módulos activos no tienen contenido para {syncGroupA.book} {syncGroupA.chapter}.
           </p>
         )}

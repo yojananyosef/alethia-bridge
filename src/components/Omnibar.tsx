@@ -81,11 +81,11 @@ export function Omnibar() {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center gap-2 rounded border border-[var(--border)] bg-[var(--bg)] px-3 py-1.5 text-xs text-[var(--muted)] transition-colors hover:border-[var(--accent)]"
+        className="flex items-center gap-2 rounded border border-border bg-background px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary"
       >
         <Search className="h-3 w-3" />
         <span>Buscar o navegar…</span>
-        <kbd className="ml-4 rounded border border-[var(--border)] px-1 text-[10px]">⌘K</kbd>
+        <kbd className="ml-4 rounded border border-border px-1 text-[10px]">⌘K</kbd>
       </button>
       <Command.Dialog
         open={open}
@@ -93,22 +93,22 @@ export function Omnibar() {
         label="Omnibar"
         className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-16"
       >
-        <Command className="w-full max-w-md overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--panel)] shadow-xl">
+        <Command className="w-full max-w-md overflow-hidden rounded-lg border border-border bg-card shadow-xl">
           <Command.Input
             value={query}
             onValueChange={setQuery}
             placeholder="Busca un pasaje, módulo o tema…"
-            className="w-full border-b border-[var(--border)] bg-transparent px-3 py-2 text-sm outline-none"
+            className="w-full border-b border-border bg-transparent px-3 py-2 text-sm outline-none"
           />
           <Command.List className="max-h-72 overflow-y-auto p-1">
-            <Command.Empty className="px-3 py-4 text-center text-xs text-[var(--muted)]">
+            <Command.Empty className="px-3 py-4 text-center text-xs text-muted-foreground">
               Sin resultados
             </Command.Empty>
             {(["navigation", "modules", "theme"] as const).map((group) => (
               <Command.Group
                 key={group}
                 heading={group}
-                className="px-1 py-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--muted)]"
+                className="px-1 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
               >
                 {commands
                   .filter((c) => c.group === group)
@@ -120,7 +120,7 @@ export function Omnibar() {
                         c.onSelect();
                         setOpen(false);
                       }}
-                      className="cursor-pointer rounded px-2 py-1.5 text-sm data-[selected=true]:bg-[var(--accent-soft)]"
+                      className="cursor-pointer rounded px-2 py-1.5 text-sm data-[selected=true]:bg-accent"
                     >
                       {c.label}
                     </Command.Item>

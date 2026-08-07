@@ -6,7 +6,10 @@ import type { WordToken } from "../../types/bible";
 
 interface WordTokenViewProps {
   token: WordToken;
-  isGreek?: boolean;
+  /** Muestra el micro-label inferior (número Strong + abreviatura morfológica). */
+  withLabels?: boolean;
+  /** Dirección de escritura del módulo (hebreo → rtl). */
+  dir?: "ltr" | "rtl";
 }
 
 /**
@@ -16,7 +19,8 @@ interface WordTokenViewProps {
  */
 export const WordTokenView = memo(function WordTokenView({
   token,
-  isGreek,
+  withLabels,
+  dir = "ltr",
 }: WordTokenViewProps) {
   const hovered = useExegesisStore((s) => s.hoveredAlignmentId === token.alignmentId);
   const setHovered = useExegesisStore((s) => s.setHoveredAlignment);
@@ -32,28 +36,28 @@ export const WordTokenView = memo(function WordTokenView({
   }, [token.strongId, setLexiconTerm]);
 
   if (/^[^\p{L}\p{M}]$/u.test(token.text)) {
-    return <span className="text-[var(--muted)]">{token.text}</span>;
+    return <span className="text-muted-foreground">{token.text}</span>;
   }
 
   return (
     <span
       className={`inline-block cursor-default rounded px-0.5 transition-colors duration-75 ${
-        hovered ? "bg-[var(--accent-soft)] ring-1 ring-[var(--accent)]" : ""
+        hovered ? "bg-accent ring-1 ring-primary" : ""
       }`}
-      dir="ltr"
+      dir={dir}
       onMouseEnter={handleEnter}
       onMouseLeave={handleLeave}
       onClick={handleClick}
       title={token.strongId ? `${token.text} — ${token.strongId}` : token.text}
     >
       {token.text}
-      {isGreek && token.strongId && (
-        <span className="block text-center text-[10px] font-semibold leading-none text-[var(--accent)]">
-          {token.strongId.replace(/^G/, "")}
+      {withLabels && token.strongId && (
+        <span className="block text-center text-[10px] font-semibold leading-none text-primary">
+          {token.strongId.replace(/^[GH]/, "")}
         </span>
       )}
-      {isGreek && token.morphCode && (
-        <span className="block text-center text-[9px] leading-none text-[var(--muted)]">
+      {withLabels && token.morphCode && (
+        <span className="block text-center text-[9px] leading-none text-muted-foreground">
           {token.morphCode.split("-").pop()}
         </span>
       )}

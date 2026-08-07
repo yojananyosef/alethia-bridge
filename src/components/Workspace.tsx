@@ -30,14 +30,14 @@ function WorkspacePanels() {
       </Panel>
       <Separator
         id="nav-sep"
-        className="w-px bg-[var(--border)] transition-colors hover:bg-[var(--accent)] data-separator:hover:bg-[var(--accent)] data-separator:active:bg-[var(--accent)]"
+        className="w-px bg-border transition-colors hover:bg-primary data-separator:hover:bg-primary data-separator:active:bg-primary"
       />
       <Panel id="reader" defaultSize={56} minSize={30}>
         <PanelCenterReader />
       </Panel>
       <Separator
         id="reader-sep"
-        className="w-px bg-[var(--border)] transition-colors hover:bg-[var(--accent)] data-separator:hover:bg-[var(--accent)] data-separator:active:bg-[var(--accent)]"
+        className="w-px bg-border transition-colors hover:bg-primary data-separator:hover:bg-primary data-separator:active:bg-primary"
       />
       <Panel id="analysis" defaultSize={26} minSize={18} collapsible>
         <PanelRightAnalysis />

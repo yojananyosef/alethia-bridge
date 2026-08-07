@@ -2,6 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BookOpenText, PackagePlus, Trash2 } from "lucide-react";
+import { Button } from "../components/ui/button";
+import { Checkbox } from "../components/ui/checkbox";
+import { Skeleton } from "../components/ui/skeleton";
+import { PanelHeader } from "./PanelHeader";
 import { useExegesisStore } from "../store/useExegesisStore";
 import type { ModuleBook, ModuleInfo } from "../types/module";
 
@@ -21,8 +25,8 @@ function BookItem({ book, chapters }: { book: ModuleBook; chapters: number }) {
         onClick={() => setSyncGroupA({ book: book.id, chapter: 1, verse: 1 })}
         className={`w-full rounded px-2 py-1 text-left text-sm ${
           isActive
-            ? "bg-[var(--accent-soft)] font-semibold text-[var(--accent)]"
-            : "text-[var(--ink)] hover:bg-[var(--accent-soft)]"
+            ? "bg-accent font-semibold text-primary"
+            : "text-foreground hover:bg-accent"
         }`}
       >
         <BookOpenText className="mr-1 inline h-3.5 w-3.5" />
@@ -36,8 +40,8 @@ function BookItem({ book, chapters }: { book: ModuleBook; chapters: number }) {
               onClick={() => setSyncGroupA({ book: book.id, chapter: c, verse: 1 })}
               className={`rounded px-1 py-0.5 text-xs ${
                 syncGroupA.chapter === c
-                  ? "bg-[var(--accent)] text-white"
-                  : "text-[var(--muted)] hover:bg-[var(--accent-soft)]"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:bg-accent"
               }`}
             >
               {c}
@@ -126,34 +130,39 @@ export function PanelLeftNavigation() {
   };
 
   return (
-    <aside className="flex h-full flex-col border-r border-[var(--border)] bg-[var(--panel)]">
-      <div className="border-b border-[var(--border)] px-3 py-2 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
-        Biblias
-      </div>
+    <aside className="flex h-full flex-col border-r border-border bg-card">
+      <PanelHeader>Biblias</PanelHeader>
       <nav className="flex-1 overflow-y-auto p-2">
-        {primary ? (
+        {modules === null ? (
+          <div className="space-y-2 px-2 py-1">
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-4 w-1/2" />
+            <Skeleton className="h-4 w-2/3" />
+          </div>
+        ) : primary ? (
           primary.books!.map((b) => (
             <BookItem key={b.id} book={b} chapters={b.capitulos} />
           ))
         ) : (
-          <p className="px-2 text-xs text-[var(--muted)]">
-            {modules === null ? "Cargando…" : "No hay módulos biblia activos."}
+          <p className="px-2 text-xs text-muted-foreground">
+            No hay módulos biblia activos.
           </p>
         )}
       </nav>
-      <div className="border-t border-[var(--border)] px-3 py-2">
+      <div className="border-t border-border px-3 py-2">
         <div className="mb-1 flex items-center justify-between">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted)]">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
             Módulos
           </span>
-          <button
+          <Button
+            variant="ghost"
+            size="icon-sm"
             onClick={() => fileRef.current?.click()}
             disabled={busy}
-            className="rounded p-0.5 text-[var(--muted)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] disabled:opacity-50"
             title="Instalar .abmod"
           >
-            <PackagePlus className="h-3.5 w-3.5" />
-          </button>
+            <PackagePlus className="size-3.5" />
+          </Button>
           <input
             ref={fileRef}
             type="file"
@@ -166,26 +175,27 @@ export function PanelLeftNavigation() {
             }}
           />
         </div>
-        {error && <p className="mb-1 text-[10px] text-red-500">{error}</p>}
+        {error && <p className="mb-1 text-xs text-destructive">{error}</p>}
         {(modules ?? []).map((m) => (
           <div key={m.id} className="flex items-center gap-1.5 py-0.5 text-xs">
-            <input
-              type="checkbox"
+            <Checkbox
               checked={m.status === "installed"}
-              onChange={() => void toggle(m)}
-              className="accent-[var(--accent)]"
+              onCheckedChange={() => void toggle(m)}
+              aria-label={`Habilitar ${m.id}`}
             />
             <span className="flex-1 truncate" title={`${m.name} v${m.version} · ${m.type}`}>
               {m.id}
-              <span className="ml-1 text-[10px] text-[var(--muted)]">v{m.version}</span>
+              <span className="ml-1 text-[10px] text-muted-foreground">v{m.version}</span>
             </span>
-            <button
+            <Button
+              variant="ghost"
+              size="icon-sm"
               onClick={() => void uninstall(m)}
-              className="rounded p-0.5 text-[var(--muted)] transition-colors hover:bg-red-100 hover:text-red-600"
+              className="hover:bg-destructive/10 hover:text-destructive"
               title={`Desinstalar ${m.id}`}
             >
-              <Trash2 className="h-3 w-3" />
-            </button>
+              <Trash2 className="size-3" />
+            </Button>
           </div>
         ))}
       </div>
