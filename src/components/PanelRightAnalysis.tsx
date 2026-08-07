@@ -136,7 +136,6 @@ export function PanelRightAnalysis() {
     setTimeout(() => setCopiedLexicon(false), 2000);
   };
 
-  const toggleRightSidebar = useExegesisStore((s) => s.toggleRightSidebar);
   const isGreek = lexicon?.language === "GREEK";
   const isHebrew = lexicon?.language === "HEBREW";
 
@@ -150,28 +149,17 @@ export function PanelRightAnalysis() {
               Análisis Léxico
             </span>
           </div>
-          <div className="flex items-center gap-1">
-            {activeLexiconTerm && (
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={() => setActiveLexiconTerm(null)}
-                title="Limpiar término seleccionado"
-                className="size-6 text-muted-foreground hover:text-foreground"
-              >
-                <X className="size-3.5" />
-              </Button>
-            )}
+          {activeLexiconTerm && (
             <Button
               variant="ghost"
               size="icon-sm"
-              onClick={toggleRightSidebar}
-              title="Cerrar panel de análisis"
-              className="size-6 text-muted-foreground hover:text-foreground hover:bg-destructive/10 hover:text-destructive"
+              onClick={() => setActiveLexiconTerm(null)}
+              title="Limpiar término seleccionado"
+              className="size-6 text-muted-foreground hover:text-foreground hover:bg-accent"
             >
               <X className="size-3.5" />
             </Button>
-          </div>
+          )}
         </div>
       </SidebarHeader>
 
