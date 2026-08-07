@@ -86,6 +86,16 @@ export const CANON: CanonBook[] = [
 /** Vista simplificada para writeBooks (id, nombre, capitulos). */
 export const BOOKLIST = CANON.map(({ id, nombre, capitulos }) => ({ id, nombre, capitulos }));
 
+/** Abreviaturas del formato simple-xml de simoncozens/open-source-bible-data (SBLGNT). */
+const bySbl = new Map<string, string>([
+  ["Matt", "Mat"], ["Mark", "Mrk"], ["Luke", "Luk"], ["John", "Jn"], ["Acts", "Act"],
+  ["Rom", "Rom"], ["1Cor", "1Co"], ["2Cor", "2Co"], ["Gal", "Gal"], ["Eph", "Eph"],
+  ["Phil", "Php"], ["Col", "Col"], ["1Thess", "1Th"], ["2Thess", "2Th"], ["1Tim", "1Ti"],
+  ["2Tim", "2Ti"], ["Titus", "Tit"], ["Phlm", "Phm"], ["Heb", "Heb"], ["Jas", "Jas"],
+  ["1Pet", "1Pe"], ["2Pet", "2Pe"], ["1John", "1Jn"], ["2John", "2Jn"], ["3John", "3Jn"],
+  ["Jude", "Jud"], ["Rev", "Rev"],
+]);
+
 const byUsfx = new Map(CANON.map((b) => [b.code.toUpperCase(), b.id]));
 const byOsis = new Map(CANON.map((b) => [b.osis.toLowerCase(), b.id]));
 
@@ -98,4 +108,9 @@ export function bookIdByUsfxCode(code: string): string | undefined {
 export function bookIdByOsisName(name: string): string | undefined {
   const norm = name.trim().toLowerCase().replace(/\s+/g, "");
   return byOsis.get(norm) ?? byOsis.get(name.trim().toLowerCase());
+}
+
+/** Resuelve el id interno desde las abreviaturas simple-xml ("Matt", "1Cor", "Phlm"). */
+export function bookIdBySblCode(code: string): string | undefined {
+  return bySbl.get(code.trim());
 }

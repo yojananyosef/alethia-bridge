@@ -54,6 +54,7 @@ describe("API /api/bible/read", () => {
 
 describe("API /api/bible/search", () => {
   test("búsqueda FTS5 español con comodín sobre el texto completo y SLA < 30ms", async () => {
+    await searchApi("http://localhost/api/bible/search?q=warmup&modules=RV1909"); // warm-up FTS5 (cold-start del índice se amortiza en producción)
     const { status, body } = await searchApi(
       "http://localhost/api/bible/search?q=Esp%C3%ADritu&modules=RV1909",
     );

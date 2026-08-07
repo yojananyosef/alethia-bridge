@@ -70,22 +70,23 @@ Tipos de módulo: `bible`, `lexicon`, `commentary`, `crossref`, `devotion`. Los 
 
 ### ETL de módulos reales (import-osis)
 
-El pipeline real importa biblias en **USFX** (XML de USFM) u **OSIS con milestones** hacia un `.abmod` instalable:
+El pipeline real importa biblias en **USFX** (XML de USFM), **OSIS con milestones** o el **simple-xml** de `simoncozens/open-source-bible-data` hacia un `.abmod` instalable:
 
 ```bash
 bun run import data/osis/spa-rv1909.usfx.xml RV1909 \
   --name "Reina-Valera 1909" --lang es --license "Public Domain"
 ```
 
-- Parser SAX streaming (`sax`): milestones de libro/capítulo/versículo en ambos formatos, CDATA, entidades Latin-1.
-- Tagging Strong: `<w s="H7225">` (USFX), `<w lemma="strong:G3056" morph>` / `<seg subType="x-strong:…">` (OSIS); notas/títulos excluidos.
+- Parser SAX streaming (`sax`): milestones de libro/capítulo/versículo en ambos formatos XML, CDATA, entidades Latin-1; simple-xml (`<book num>`/`<chapter num>`/`<verse num>`, `<w strongs pos morph lemma>`).
+- Tagging Strong: `<w s="H7225">` (USFX), `<w lemma="strong:G3056" morph>` / `<seg subType="x-strong:…">` (OSIS), `strongs="01080"` (simple-xml → G1080); notas/títulos excluidos.
+- El lema de la fuente se prefiere sobre lexicon.db (p. ej. lemas griegos del SBLGNT); morfología Robinson cruda (morphgnt).
 - El módulo se empaqueta/instala como cualquier otro (`bun run package <id>`).
 
-Fuentes libres probadas: RV1909 completo con Strongs (USFX, dominio público, `github.com/seven1m/open-bibles`); eBible.org publica OSIS con milestones para muchas traducciones libres.
+Fuentes libres probadas: RV1909 completo con Strongs (USFX, dominio público, `github.com/seven1m/open-bibles`); SBLGNT completo con Strong+morfología+lemas (simple-xml, texto SBLGNT EULA, análisis morphgnt CC-BY-SA 3.0, `github.com/simoncozens/open-source-bible-data`); eBible.org publica OSIS con milestones para muchas traducciones libres.
 
 ### Flujo de datos
 
-- **Servidor**: `better-sqlite3` con `PRAGMA journal_mode=WAL` (lecturas < 10ms). Los módulos RV1909 y NA28 se alinean por `alineacion_id` en `palabras_interlineal`.
+- **Servidor**: `better-sqlite3` con `PRAGMA journal_mode=WAL` (lecturas < 10ms). Los módulos RV1909 y SBLGNT se alinean por `alineacion_id` en `palabras_interlineal`.
 - **API**: Route Handlers que sirven payloads listos para renderizar (`ReadResponse`, `SearchResponse`).
 - **Cliente**: la store Zustand sincroniza paneles (pasaje activo, hover interlineal, término léxico, tema). Los tokens griegos se suscriben por selector a su `alineacion_id`, de modo que el hover resalta en 0 re-renders de página.
 - **Local-first**: notas (TipTap → HTML) y resaltados se guardan en IndexedDB vía Dexie.

@@ -45,7 +45,7 @@ import {
   writeBooks,
   writeManifestMeta,
 } from "../src/lib/db/sqlite.ts";
-import { BOOKLIST, bookIdByOsisName, bookIdByUsfxCode } from "../src/lib/canon.ts";
+import { BOOKLIST, bookIdByOsisName, bookIdBySblCode, bookIdByUsfxCode } from "../src/lib/canon.ts";
 
 /* ------------------------------------------------------------------ */
 /* Entidades XML Latin-1 comunes (español y generales)                  */
@@ -97,6 +97,8 @@ interface WordToken {
   text: string;
   strong: string | null;
   morph: string | null;
+  /** Lema de la fuente (p. ej. el lema griego del SBLGNT); se prefiere sobre el del lexicon. */
+  lemma: string | null;
 }
 
 interface VerseData {
@@ -127,6 +129,7 @@ interface ParserState {
   wordText: string;
   wordStrong: string | null;
   wordMorph: string | null;
+  wordLemma: string | null;
   inWord: boolean;
   skipDepth: number;
   unknownBooks: string[];
@@ -160,6 +163,7 @@ function buildParser(
     wordText: "",
     wordStrong: null,
     wordMorph: null,
+    wordLemma: null,
     inWord: false,
     skipDepth: 0,
     unknownBooks: [],
@@ -170,7 +174,7 @@ function buildParser(
   const flushPlain = (): void => {
     for (const t of tokenize(state.plainBuffer)) {
       if (t.isPunct) continue;
-      state.vTokens.push({ text: t.text, strong: null, morph: null });
+      state.vTokens.push({ text: t.text, strong: null, morph: null, lemma: null });
     }
     state.plainBuffer = "";
   };
@@ -181,7 +185,12 @@ function buildParser(
     if (state.inWord) {
       for (const t of tokenize(state.wordText)) {
         if (t.isPunct) continue;
-        state.vTokens.push({ text: t.text, strong: state.wordStrong, morph: state.wordMorph });
+        state.vTokens.push({
+          text: t.text,
+          strong: state.wordStrong,
+          morph: state.wordMorph,
+          lemma: state.wordLemma,
+        });
       }
       state.wordText = "";
       state.inWord = false;
@@ -226,9 +235,16 @@ function buildParser(
     switch (tag) {
       case "book": {
         // USFX: <book id="GEN"> — OSIS: <book osisID="Genesis"> (o <div type="book" osisID>)
-        const id = attrs.id ? bookIdByUsfxCode(attrs.id) : attrs.osisID ? bookIdByOsisName(attrs.osisID) : undefined;
+        // simple-xml: <book num="Matt">…</book>
+        const id = attrs.id
+          ? bookIdByUsfxCode(attrs.id)
+          : attrs.osisID
+            ? bookIdByOsisName(attrs.osisID)
+            : attrs.num
+              ? bookIdBySblCode(attrs.num)
+              : undefined;
         closeVerse();
-        if (!id) state.unknownBooks.push(String(attrs.id ?? attrs.osisID ?? "?"));
+        if (!id) state.unknownBooks.push(String(attrs.id ?? attrs.osisID ?? attrs.num ?? "?"));
         state.book = id ?? null;
         state.chapter = null;
         break;
@@ -254,13 +270,11 @@ function buildParser(
       }
       case "chapter": {
         // OSIS: <chapter osisID="Gen.1"/> (milestone) o <chapter osisID="Gen.1">…</chapter>
-        const ref = attrs.osisID;
-        if (ref) {
-          const ch = Number(ref.split(".").pop());
-          if (Number.isInteger(ch)) {
-            closeVerse();
-            state.chapter = ch;
-          }
+        // simple-xml: <chapter num="1">…</chapter>
+        const ch = Number(attrs.osisID ? attrs.osisID.split(".").pop() : attrs.num);
+        if (Number.isInteger(ch)) {
+          closeVerse();
+          state.chapter = ch;
         }
         break;
       }
@@ -278,25 +292,35 @@ function buildParser(
       case "verse": {
         // OSIS: <verse sID="John.3.16"/> … <verse eID="John.3.16"/>
         //       o <verse osisID="John.3.16">…</verse> (forma de elemento)
+        // simple-xml: <verse num="1">…</verse>
         if (attrs.eID) {
           closeVerse();
-        } else if (attrs.osisID) {
-          const parts = attrs.osisID.split(".");
-          const v = Number(parts[parts.length - 1]);
-          if (Number.isInteger(v)) {
-            state.verseMilestone = node.isSelfClosing;
-            openVerse(v);
+        } else {
+          const ref = attrs.osisID ?? attrs.num;
+          if (ref) {
+            const parts = String(ref).split(".");
+            const v = Number(parts[parts.length - 1]);
+            if (Number.isInteger(v)) {
+              state.verseMilestone = node.isSelfClosing;
+              openVerse(v);
+            }
           }
         }
         break;
       }
       case "w": {
         // USFX: <w s="H7225">texto</w> — OSIS: <w lemma="strong:G3056" morph="…">texto</w>
+        // simple-xml: <w pos="V-" morph="3AAI-S--" lemma="γεννάω" strongs="01080">texto</w>
         flushPlain();
         state.inWord = true;
-        state.wordStrong = (attrs.s ?? "").trim() || strongFromAttrs(attrs);
-        if (state.wordStrong) state.wordStrong = normalizeStrong(state.wordStrong);
-        state.wordMorph = attrs.morph ? String(attrs.morph).trim() : null;
+        const strong =
+          (attrs.s ?? "").trim() ||
+          strongFromAttrs(attrs) ||
+          (attrs.strongs ? `G${String(attrs.strongs).trim()}` : "");
+        state.wordStrong = strong ? normalizeStrong(strong) : null;
+        state.wordMorph = attrs.morph ? String(attrs.morph).trim() : attrs.pos ? String(attrs.pos).trim() : null;
+        const srcLemma = attrs.lemma ? String(attrs.lemma).trim() : null;
+        state.wordLemma = srcLemma && !/^strong:/i.test(srcLemma) ? srcLemma : null;
         break;
       }
       case "seg": {
@@ -359,7 +383,7 @@ function buildParser(
 /* Detección de formato                                                 */
 /* ------------------------------------------------------------------ */
 
-function detectRoot(xml: string): "usfx" | "osis" {
+function detectRoot(xml: string): "usfx" | "osis" | "sbl" {
   const stripped = xml
     .replace(/<\?xml[^>]*\?>/g, "")
     .replace(/<!--[\s\S]*?-->/g, "")
@@ -368,8 +392,15 @@ function detectRoot(xml: string): "usfx" | "osis" {
   const root = m ? m[1].toLowerCase() : "";
   if (root === "usfx") return "usfx";
   if (root === "osis" || root === "osistext") return "osis";
+  if (root === "bible") return "sbl";
   throw new Error(`formato XML no reconocido (raíz: "${root || "ninguna"}")`);
 }
+
+const FORMAT_LABEL: Record<"usfx" | "osis" | "sbl", string> = {
+  usfx: "USFX",
+  osis: "OSIS",
+  sbl: "simple-xml (SBLGNT)",
+};
 
 /* ------------------------------------------------------------------ */
 /* Importación                                                          */
@@ -467,7 +498,7 @@ function importModule(sourcePath: string, moduleId: string, flags: ManifestFlags
         );
         v.tokens.forEach((t, ti) => {
           insWord.run(
-            id, ti, t.text, lemmaFor(t.strong), t.strong, t.morph,
+            id, ti, t.text, t.lemma ?? lemmaFor(t.strong), t.strong, t.morph,
             `${v.book}${v.chapter}:${v.verse}:g${ti}`,
           );
           words++;
@@ -489,7 +520,7 @@ function importModule(sourcePath: string, moduleId: string, flags: ManifestFlags
   };
 
   const t0 = performance.now();
-  console.log(`${format === "usfx" ? "USFX" : "OSIS"}: ${(xml.length / 1024 / 1024).toFixed(1)} MB XML`);
+  console.log(`${FORMAT_LABEL[format]}: ${(xml.length / 1024 / 1024).toFixed(1)} MB XML`);
   const { parser, state } = buildParser(emit, (msg) => console.log(`  ${msg}`));
   parser.write(xml).close();
   flushBook();
@@ -512,7 +543,7 @@ function importModule(sourcePath: string, moduleId: string, flags: ManifestFlags
     year: flags.year ?? "0",
     description:
       flags.description ??
-      `${format === "usfx" ? "USFX" : "OSIS"} completo: ${verses} versículos (${sourcePath}).`,
+      `${FORMAT_LABEL[format]} completo: ${verses} versículos (${sourcePath}).`,
     schemaVersion: "1",
     dependencies: (flags.deps ?? []).join(","),
     strongScheme: flags.strongScheme ?? "",

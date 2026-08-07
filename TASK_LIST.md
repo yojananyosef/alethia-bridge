@@ -77,6 +77,15 @@ Monolito modular Next.js 16 (App Router) + TypeScript strict + RSC + Zustand + T
 - [x] Empaquetado: `dist-modules/RV1909-1.0.0.abmod` (30 MB)
 - [x] **Validación:** 13/13 tests + SLA read <10ms / search <30ms con el texto completo + curl E2E + build OK
 
+## FASE 8 — Módulo real SBLGNT (griego con Strong + morfología + lemas) ✅
+- [x] Fuente: `simoncozens/open-source-bible-data` → `cooked/simple-xml/sbl.xml` (SBLGNT con etiquetas de morphgnt y Strongs; CC BY 4.0 texto / CC-BY-SA 3.0 análisis)
+- [x] `src/lib/canon.ts`: mapa `bookIdBySblCode` (abreviaturas simple-xml: Matt, 1Cor, Phlm…)
+- [x] `scripts/import-osis.ts`: tercer formato `simple-xml` (raíz `<bible>`, `<book num>`/`<chapter num>`/`<verse num>`, `<w pos morph lemma strongs>`)
+  - [x] `strongs="01080"` → G+Strong normalizado (G1080); `morph` Robinson crudo (3AAI-S--); lema griego de la fuente (preferido sobre lexicon.db); fallback de morfología a `pos`
+- [x] **Módulo real**: SBLGNT completo (Holmes 2010) → 7.927 versículos (conteo SBLGNT, sin Mc 16:9-20/Jn 7:53-8:11), 137.557 tokens, 134.099 con Strong (97,5%), 100% morph+lema, 457 códigos morph, 66 libros (2,8s)
+- [x] Texto crítico con sigla ⸀ conservada en `texto_plano` (excluida de tokens); alineación `Jn3:16:g<n>` compatible con RV1909
+- [x] Empaquetado: `dist-modules/SBLGNT-1.0.0.abmod` (7,6 MB); 13/13 tests verdes; SLA read 3,8ms
+
 ## Próximos pasos (roadmap módulos)
 - [ ] Tipos de módulo `commentary`/`crossref`/`devotion` con renderizado dedicado
 - [ ] Registry remoto con checksums SHA-256 y actualizaciones por versión
