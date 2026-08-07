@@ -65,7 +65,7 @@ export function PanelLeftNavigation() {
   }, []);
 
   useEffect(() => {
-    void refresh();
+    void Promise.resolve().then(refresh);
   }, [refresh]);
 
   /** Módulo biblia activo con el canon más completo (fuente de navegación). */

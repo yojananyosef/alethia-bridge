@@ -1,8 +1,12 @@
-export type BibleModuleId = "RV1909" | "NA28" | "WTT";
+/** ID de módulo biblia: dinámico, descubierto desde data/modules (registry), p. ej. RV1909, SBLGNT, WLC, NBV. */
+export type BibleModuleId = string;
 
 export type BibleLanguage = "es" | "el" | "he";
 
 export type ThemeId = "academic-paper" | "dark-contrast" | "sepia";
+
+/** Layout del lector: interleaved (interlineal) o columns (biblia paralela). */
+export type ReaderLayout = "interleaved" | "columns";
 
 export interface WordToken {
   id: number;

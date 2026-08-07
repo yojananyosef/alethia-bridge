@@ -1,7 +1,7 @@
 "use client";
 
 import { create } from "zustand";
-import type { SyncGroupReference, ThemeId } from "../types/bible";
+import type { ReaderLayout, SyncGroupReference, ThemeId } from "../types/bible";
 
 interface ExegesisState {
   /** ID de alineación resaltado al hacer hover (resalte interlineal instantáneo). */
@@ -14,6 +14,8 @@ interface ExegesisState {
   activeTheme: ThemeId;
   /** Módulos activos en el lector (orden = orden de visualización). */
   activeModules: string[];
+  /** Layout del lector: "interleaved" (interlineal en línea) o "columns" (biblia paralela por columnas). */
+  readerLayout: ReaderLayout;
 }
 
 interface ExegesisActions {
@@ -22,6 +24,7 @@ interface ExegesisActions {
   setSyncGroupA: (ref: SyncGroupReference) => void;
   setActiveTheme: (theme: ThemeId) => void;
   toggleModule: (moduleId: string) => void;
+  setReaderLayout: (layout: ReaderLayout) => void;
 }
 
 export type ExegesisStore = ExegesisState & ExegesisActions;
@@ -29,13 +32,15 @@ export type ExegesisStore = ExegesisState & ExegesisActions;
 export const useExegesisStore = create<ExegesisStore>()((set) => ({
   hoveredAlignmentId: null,
   activeLexiconTerm: null,
-  syncGroupA: { book: "Jn", chapter: 3, verse: 16 },
+  syncGroupA: { book: "Jn", chapter: 1, verse: 1 },
   activeTheme: "academic-paper",
-  activeModules: ["RV1909", "NA28"],
+  activeModules: ["RV1909", "SBLGNT"],
+  readerLayout: "interleaved",
   setHoveredAlignment: (id) => set({ hoveredAlignmentId: id }),
   setActiveLexiconTerm: (term) => set({ activeLexiconTerm: term }),
   setSyncGroupA: (ref) => set({ syncGroupA: ref }),
   setActiveTheme: (theme) => set({ activeTheme: theme }),
+  setReaderLayout: (layout) => set({ readerLayout: layout }),
   toggleModule: (moduleId) =>
     set((state) => {
       const has = state.activeModules.includes(moduleId);

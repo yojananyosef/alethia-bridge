@@ -4,7 +4,7 @@ import { GET as readGET } from "../app/api/bible/read/route.ts";
 import { GET as searchGET } from "../app/api/bible/search/route.ts";
 import type { ReadResponse, SearchResponse } from "../src/types/bible.ts";
 
-const READ_URL = "http://localhost/api/bible/read?book=Jn&chapter=3&modules=RV1909,NA28";
+const READ_URL = "http://localhost/api/bible/read?book=Jn&chapter=3&modules=RV1909,SBLGNT";
 
 async function readApi(url: string): Promise<{ status: number; body: ReadResponse }> {
   const res = await readGET(new Request(url));
@@ -22,7 +22,7 @@ describe("API /api/bible/read", () => {
     const { status, body } = await readApi(READ_URL);
     assert.equal(status, 200);
     assert.equal(body.modules.length, 2);
-    assert.deepEqual(body.modules.map((m) => m.moduleId), ["RV1909", "NA28"]);
+    assert.deepEqual(body.modules.map((m) => m.moduleId), ["RV1909", "SBLGNT"]);
     assert.equal(body.modules[0].verses.length, 36);
     assert.ok(body.durationMs < 10, `SLA read excedido: ${body.durationMs}ms`);
   });
@@ -42,8 +42,23 @@ describe("API /api/bible/read", () => {
     const dios = gr.tokens.find((t) => t.text === "θεὸς");
     assert.equal(dios?.strongId, "G2316");
     const amos = gr.tokens.find((t) => t.text === "ἠγάπησεν");
-    assert.equal(amos?.morphCode, "V-AIA-3S");
+    assert.equal(amos?.morphCode, "3AAI-S--");
     assert.ok(amos?.lemma?.includes("ἀγαπάω"));
+  });
+
+  test("Jn 1:1 alineado por strong canónico: Verbo↔λόγος, principio↔ἀρχῇ, era↔ἦν (G2258≡G1510)", async () => {
+    const { body } = await readApi(
+      "http://localhost/api/bible/read?book=Jn&chapter=1&modules=RV1909,SBLGNT",
+    );
+    const es = body.modules[0].verses.find((v) => v.verse === 1)!;
+    const gr = body.modules[1].verses.find((v) => v.verse === 1)!;
+    const id = (arr: { text: string; alignmentId: string }[], t: string) =>
+      arr.find((x) => x.text === t)?.alignmentId;
+
+    assert.equal(id(es.tokens, "principio"), id(gr.tokens, "ἀρχῇ"), "principio debe alinear con ἀρχῇ");
+    assert.equal(id(es.tokens, "Verbo"), id(gr.tokens, "λόγος"), "Verbo debe alinear con λόγος");
+    assert.equal(id(es.tokens, "era"), id(gr.tokens, "ἦν"), "era (G2258) debe alinear con ἦν (G1510)");
+    assert.equal(id(es.tokens, "Dios"), id(gr.tokens, "θεόν"), "Dios debe alinear con θεόν");
   });
 
   test("parametros invalidos → 400", async () => {
@@ -78,15 +93,15 @@ describe("API /api/bible/search", () => {
 
   test("búsqueda griega por prefijo (lemas/acentos)", async () => {
     const { body } = await searchApi(
-      "http://localhost/api/bible/search?q=%CF%80%CE%B9%CF%83%CF%84%CE%B5%CF%85&modules=NA28",
+      "http://localhost/api/bible/search?q=%CF%80%CE%B9%CF%83%CF%84%CE%B5%CF%85&modules=SBLGNT",
     );
-    const vv = body.results.map((r) => r.verse);
-    assert.ok(vv.includes(16));
-    assert.ok(vv.includes(36));
+    assert.ok(body.total > 50, `esperaba cobertura sobre el NT completo (total=${body.total})`);
+    assert.ok(body.results.length > 0);
+    assert.ok(body.results.some((r) => r.book === "Jn" && r.chapter === 3), "Juan 3 debe estar entre los resultados");
   });
 
   test("búsqueda por Strong number G25", async () => {
-    const { body } = await searchApi("http://localhost/api/bible/search?q=G25&modules=NA28");
+    const { body } = await searchApi("http://localhost/api/bible/search?q=G25&modules=SBLGNT");
     assert.ok(body.results.length > 0);
     assert.ok(body.results.every((r) => r.strongIds.includes("G25")));
   });

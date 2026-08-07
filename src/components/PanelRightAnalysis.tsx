@@ -28,14 +28,14 @@ export function PanelRightAnalysis() {
   const [notes, setNotes] = useState<UserNote[]>([]);
 
   useEffect(() => {
-    if (!activeLexiconTerm) {
-      setLexicon(null);
-      setMorph(null);
-      return;
-    }
     let cancelled = false;
-    setLexicon(null);
-    setMorph(null);
+    void Promise.resolve().then(() => {
+      if (!cancelled) {
+        setLexicon(null);
+        setMorph(null);
+      }
+    });
+    if (!activeLexiconTerm) return;
     fetchJson<{ lexicon: LexiconEntry }>(
       `/api/bible/read?lexicon=${encodeURIComponent(activeLexiconTerm)}`,
     )

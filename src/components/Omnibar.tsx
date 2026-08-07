@@ -17,7 +17,7 @@ export function Omnibar() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [modules, setModules] = useState<ModuleInfo[]>([]);
-  const { setSyncGroupA, activeTheme, setActiveTheme, activeModules, toggleModule } =
+  const { setSyncGroupA, setActiveTheme, activeModules, toggleModule } =
     useExegesisStore();
 
   useEffect(() => {

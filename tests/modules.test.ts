@@ -1,6 +1,6 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { rmSync } from "node:fs";
 import path from "node:path";
 import Database from "better-sqlite3";
 import { zipSync } from "fflate";
@@ -27,7 +27,7 @@ describe("API /api/modules", () => {
     const modules = await listModules();
     const ids = modules.map((m) => m.id);
     assert.ok(ids.includes("RV1909"), "falta RV1909");
-    assert.ok(ids.includes("NA28"), "falta NA28");
+    assert.ok(ids.includes("SBLGNT"), "falta SBLGNT");
     assert.ok(ids.includes("lexicon"), "falta lexicon");
 
     const rv = modules.find((m) => m.id === "RV1909")!;

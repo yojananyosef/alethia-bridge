@@ -54,7 +54,7 @@ function WorkspacePanels() {
 export function Workspace() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
-    setMounted(true);
+    void Promise.resolve().then(() => setMounted(true));
   }, []);
   if (!mounted) return <div className="flex h-full w-full flex-1" />;
   return <WorkspacePanels />;

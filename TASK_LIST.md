@@ -111,6 +111,23 @@ Monolito modular Next.js 16 (App Router) + TypeScript strict + RSC + Zustand + T
 - [x] Las 20 entradas curadas del seed (STEPBible, V-AIA-3S) se conservan; los códigos generados se refrescan en cada import
 - [x] Empaquetado actualizado: `dist-modules/lexicon-1.0.0.abmod` (1,1 MB); 13/13 tests; tsc+lint limpios
 
+## FASE 12 — Alineación semántica + Biblia paralela (NBV) ✅
+- [x] **Default Jn 1:1 con módulos reales**: el hardcode Jn 3:16 era porque el módulo demo NA28 solo tenía Juan 3; `useExegesisStore` ahora abre `RV1909+SBLGNT` en Jn 1:1
+- [x] **Alineación por strong canónico** (antes posicional): `service.ts` agrupa tokens por `strong_id` dentro del versículo; fallback posicional solo para tokens sin strong (artículos/conjunciones). Fija Jn 1:1: principio↔ἀρχῇ, Verbo↔λόγος, el↔ὁ, Dios↔θεόν; hebreo Gen 1:1: crió↔בָּרָא, Dios↔אֱלֹהִים
+- [x] **Tabla de equivalencia de formas flexionadas** (`STRONG_EQUIV`): G2258/G2076/G5600…≡G1510 — la RV1909 numera por formas (ἦν=G2258) y SBLGNT por raíz (εἰμί=G1510)
+- [x] **Módulo NBV** (`Biblica Open Nueva Biblia Viva 2008`, CC BY-SA 4.0 de eBible.org): biblia completa 29.102 vv. / 700k tokens, equivalencia dinámica → contraste con RV1909 literal; aparece automáticamente en el selector (registry auto-descubre `data/modules/*.db`)
+- [x] Fixes en `import-osis.ts`: rangos de versículos `<v id="6-7" bcv="…">` (eBible: 1.147 rangos en NBV) y selección del `.xml` correcto en zips (`spaonbv_usfx.xml` — regex exigía `.usfx.xml` pero eBible usa `_usfx.xml`)
+- [x] Empaquetado: `dist-modules/NBV-1.0.0.abmod` (29,7 MB); 14/14 tests (nuevo test Jn 1:1 alineación canónica); tsc+lint limpios
+- [ ] Nota: NBV no tiene tagging morfológico → la comparación con RV1909 es a nivel de versículo/columna (no interlineal palabra-a-palabra, que solo aplica a módulos con strong: RV1909/SBLGNT/WLC)
+
+## FASE 13 — Vista paralela visible + retiro de módulos preview ✅
+- [x] **ModuleBar en el lector**: chips visibles de todos los módulos biblia instalados (ES/GR/HE) que activan/ocultan cada versión con un clic — la vista paralela se crea desde el header del lector, no solo desde ⌘K
+- [x] **Layout "columns" (biblia paralela)**: toggle en el header entre interleaved (interlineal) y columnas; en columnas cada módulo ocupa una columna con versículos alineados por fila
+- [x] **Retiro de previews NA28/WTT**: eran módulos demo del seed (Juan 3 y placeholder vacío) — eliminados; `BibleModuleId` pasó de unión cerrada a `string` (registry dinámico); eliminado `seed-test-db.ts` (pisaba RV1909 real con Juan 3; los módulos ahora vienen solo de `import-osis`/`import-lexicon`)
+- [x] Tests actualizados a módulos oficiales: `RV1909,SBLGNT` (morphgnt real `3AAI-S--` en vez de STEPBible `V-AIA-3S`); búsqueda griega valida cobertura del NT completo
+- [x] Lint del repo saneado: 5 errores pre-existentes de `react-hooks/set-state-in-effect` (ExegesisProvider, Omnibar, PanelLeftNavigation, PanelRightAnalysis, ThemeApplier, Workspace) corregidos con deferimiento por microtask
+- [x] Empaquetados vigentes: RV1909, SBLGNT, WLC, NBV, lexicon; 14/14 tests; tsc+lint limpios
+
 ## Próximos pasos (roadmap módulos)
 - [ ] Tipos de módulo `commentary`/`crossref`/`devotion` con renderizado dedicado
 - [ ] Registry remoto con checksums SHA-256 y actualizaciones por versión

@@ -7,7 +7,6 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "seed": "node scripts/seed-test-db.ts",
     "import": "node scripts/import-osis.ts",
     "import:lexicon": "node scripts/import-lexicon.ts",
     "package": "node scripts/package-module.ts",

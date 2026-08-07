@@ -57,6 +57,18 @@ interface TokenRow {
   alineacion_id: string;
 }
 
+/** Formas flexionadas de εἰμί que Strong numeró aparte; equivalen al lema raíz (G1510).
+ *  Los módulos RV1909 (numeración por formas) y SBLGNT (raíz morphgnt) se unifican aquí. */
+const STRONG_EQUIV: Record<string, string> = {
+  G2071: "G1510", G2075: "G1510", G2076: "G1510", G2077: "G1510",
+  G2252: "G1510", G2258: "G1510", G2468: "G1510", G5600: "G1510", G5607: "G1510",
+};
+
+/** Strong canónico para alineación interlingüística. */
+function canonicalStrong(strong: string | null): string | null {
+  return strong ? (STRONG_EQUIV[strong] ?? strong) : null;
+}
+
 export function readChapter(book: string, chapterRaw: string, modulesRaw: string | null): ReadResponse {
   const t0 = performance.now();
   const { book: bookId, chapter } = sanitizeReference(book, chapterRaw);
@@ -99,7 +111,11 @@ export function readChapter(book: string, chapterRaw: string, modulesRaw: string
         lemma: t.lema,
         strongId: t.strong_id,
         morphCode: t.morph_code,
-        alignmentId: t.alineacion_id,
+        // Alineación semántica: por strong_id canónico dentro del versículo (los tokens
+        // sin strong —artículos, conjunciones— caen a la alineación posicional).
+        alignmentId: t.strong_id
+          ? `${v.libro_id}${v.capitulo}:${v.versiculo}:s${canonicalStrong(t.strong_id)}`
+          : t.alineacion_id,
       }));
       return {
         reference: `${v.libro_id} ${v.capitulo}:${v.versiculo}`,

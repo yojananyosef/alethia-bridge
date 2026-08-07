@@ -288,8 +288,9 @@ function buildParser(
         break;
       }
       case "v": {
-        // USFX: <v id="1" />
-        const v = Number(attrs.id);
+        // USFX: <v id="1" /> — eBible usa rangos: <v id="6-7" bcv="JHN.1.6" />
+        let v = Number(attrs.id);
+        if (!Number.isInteger(v) && attrs.bcv) v = Number(String(attrs.bcv).split(".").pop());
         if (Number.isInteger(v)) openVerse(v);
         break;
       }
@@ -445,7 +446,12 @@ function readSource(source: string): string {
     const files = unzipSync(bytes);
     const names = Object.keys(files);
     const match =
-      names.find((n) => /\.(usfx|osis)\.xml$/i.test(n)) ?? names.find((n) => n.endsWith(".xml"));
+      // "spaonbv_usfx.xml", "spa-rv1909.usfx.xml", "…osis.xml" (separador `_` o `.`)
+      names.find((n) => /(?:usfx|osis)\.xml$/i.test(n)) ??
+      // Fallback: el .xml más grande (el del texto bíblico, no BookNames/metadata).
+      names
+        .filter((n) => n.endsWith(".xml"))
+        .sort((a, b) => files[b].length - files[a].length)[0];
     if (!match) {
       throw new Error(`no se encontró un .usfx.xml/.osis.xml dentro del zip (${names.join(", ")})`);
     }
