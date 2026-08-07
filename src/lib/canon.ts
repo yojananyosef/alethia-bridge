@@ -86,8 +86,17 @@ export const CANON: CanonBook[] = [
 /** Vista simplificada para writeBooks (id, nombre, capitulos). */
 export const BOOKLIST = CANON.map(({ id, nombre, capitulos }) => ({ id, nombre, capitulos }));
 
-/** Abreviaturas del formato simple-xml de simoncozens/open-source-bible-data (SBLGNT). */
-const bySbl = new Map<string, string>([
+/** IDs OSIS estándar (abreviaturas SBL/Symphony): usados por morphhb, eBible OSIS y
+ *  el simple-xml de simoncozens/open-source-bible-data (num="Matt", "1Cor", "Gen"...). */
+const byOsisId = new Map<string, string>([
+  ["Gen", "Gen"], ["Exod", "Exo"], ["Lev", "Lev"], ["Num", "Num"], ["Deut", "Deu"],
+  ["Josh", "Jos"], ["Judg", "Jdg"], ["Ruth", "Rut"], ["1Sam", "1Sa"], ["2Sam", "2Sa"],
+  ["1Kgs", "1Ki"], ["2Kgs", "2Ki"], ["1Chr", "1Ch"], ["2Chr", "2Ch"], ["Ezra", "Ezr"],
+  ["Neh", "Neh"], ["Esth", "Est"], ["Job", "Job"], ["Ps", "Psa"], ["Prov", "Pro"],
+  ["Eccl", "Ecc"], ["Song", "Sng"], ["Isa", "Isa"], ["Jer", "Jer"], ["Lam", "Lam"],
+  ["Ezek", "Ezk"], ["Dan", "Dan"], ["Hos", "Hos"], ["Joel", "Joe"], ["Amos", "Amo"],
+  ["Obad", "Oba"], ["Jonah", "Jon"], ["Mic", "Mic"], ["Nah", "Nah"], ["Hab", "Hab"],
+  ["Zeph", "Zep"], ["Hag", "Hag"], ["Zech", "Zec"], ["Mal", "Mal"],
   ["Matt", "Mat"], ["Mark", "Mrk"], ["Luke", "Luk"], ["John", "Jn"], ["Acts", "Act"],
   ["Rom", "Rom"], ["1Cor", "1Co"], ["2Cor", "2Co"], ["Gal", "Gal"], ["Eph", "Eph"],
   ["Phil", "Php"], ["Col", "Col"], ["1Thess", "1Th"], ["2Thess", "2Th"], ["1Tim", "1Ti"],
@@ -110,7 +119,12 @@ export function bookIdByOsisName(name: string): string | undefined {
   return byOsis.get(norm) ?? byOsis.get(name.trim().toLowerCase());
 }
 
-/** Resuelve el id interno desde las abreviaturas simple-xml ("Matt", "1Cor", "Phlm"). */
+/** Resuelve el id interno desde el ID OSIS estándar ("Gen", "Exod", "1Cor", "Ps", "Matt"). */
+export function bookIdByOsisId(osisId: string): string | undefined {
+  return byOsisId.get(osisId.trim());
+}
+
+/** Resuelve el id interno desde las abreviaturas simple-xml ("Matt", "1Cor", "Phlm") = IDs OSIS. */
 export function bookIdBySblCode(code: string): string | undefined {
-  return bySbl.get(code.trim());
+  return bookIdByOsisId(code);
 }

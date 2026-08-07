@@ -86,6 +86,15 @@ Monolito modular Next.js 16 (App Router) + TypeScript strict + RSC + Zustand + T
 - [x] Texto crítico con sigla ⸀ conservada en `texto_plano` (excluida de tokens); alineación `Jn3:16:g<n>` compatible con RV1909
 - [x] Empaquetado: `dist-modules/SBLGNT-1.0.0.abmod` (7,6 MB); 13/13 tests verdes; SLA read 3,8ms
 
+## FASE 9 — Módulo real WLC (hebreo con Strong + morfología Robinson) ✅
+- [x] Fuente: `openscriptures/morphhb` (dominio público, WLC 4.20) — 40 archivos OSIS → combinados en `data/osis/hbo-wlc.osis.xml` (un `<div type="book">` por libro, headers descartados)
+- [x] `src/lib/canon.ts`: mapa `bookIdByOsisId` unificado (IDs OSIS estándar: Gen, Exod, 1Sam, Ps, 1Cor…; OT+NT) — `bookIdBySblCode` ahora delega en él
+- [x] `scripts/import-osis.ts`: parsing de lemma hebreo morphhb (`b/7225`/`b/d/1870`/`1254 a`/`8423+` → H-código; partículas puras sin raíz → sin strong); flag `--drop-word-slash` (el `/` de morphhb marca prefijos, se elimina del texto)
+- [x] **Módulo real**: WLC completo → 23.213 versículos, 308.674 tokens, 299.556 con Strong (97%), 305.507 con morph (99%, 3.443 códigos), 8.632 strongs distintos, 39 libros AT (7s)
+- [x] Gen 1:1 alineado con RV1909 (7/7 pares posicionales); sin G-codes filtrados; SLA read 15ms (2 módulos)
+- [x] Empaquetado: `dist-modules/WLC-1.0.0.abmod` (18 MB); 13/13 tests × 2; tsc+lint limpios
+- [x] Fix test SLA búsqueda: warm-up con la misma query (cold-start FTS por término, no por módulo)
+
 ## Próximos pasos (roadmap módulos)
 - [ ] Tipos de módulo `commentary`/`crossref`/`devotion` con renderizado dedicado
 - [ ] Registry remoto con checksums SHA-256 y actualizaciones por versión

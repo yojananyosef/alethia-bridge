@@ -78,11 +78,12 @@ bun run import data/osis/spa-rv1909.usfx.xml RV1909 \
 ```
 
 - Parser SAX streaming (`sax`): milestones de libro/capítulo/versículo en ambos formatos XML, CDATA, entidades Latin-1; simple-xml (`<book num>`/`<chapter num>`/`<verse num>`, `<w strongs pos morph lemma>`).
-- Tagging Strong: `<w s="H7225">` (USFX), `<w lemma="strong:G3056" morph>` / `<seg subType="x-strong:…">` (OSIS), `strongs="01080"` (simple-xml → G1080); notas/títulos excluidos.
-- El lema de la fuente se prefiere sobre lexicon.db (p. ej. lemas griegos del SBLGNT); morfología Robinson cruda (morphgnt).
+- Tagging Strong: `<w s="H7225">` (USFX), `<w lemma="strong:G3056" morph>` / `<seg subType="x-strong:…">` (OSIS), `strongs="01080"` (simple-xml → G1080), lemma hebreo morphhb (`b/7225` → H7225); notas/títulos excluidos.
+- El lema de la fuente se prefiere sobre lexicon.db (p. ej. lemas griegos del SBLGNT); morfología Robinson cruda (morphgnt / morphhb).
+- `--drop-word-slash`: elimina los `/` de marcación de prefijos del texto morfológico hebreo (morphhb).
 - El módulo se empaqueta/instala como cualquier otro (`bun run package <id>`).
 
-Fuentes libres probadas: RV1909 completo con Strongs (USFX, dominio público, `github.com/seven1m/open-bibles`); SBLGNT completo con Strong+morfología+lemas (simple-xml, texto SBLGNT EULA, análisis morphgnt CC-BY-SA 3.0, `github.com/simoncozens/open-source-bible-data`); eBible.org publica OSIS con milestones para muchas traducciones libres.
+Fuentes libres probadas: RV1909 completo con Strongs (USFX, dominio público, `github.com/seven1m/open-bibles`); SBLGNT completo con Strong+morfología+lemas (simple-xml, texto SBLGNT EULA, análisis morphgnt CC-BY-SA 3.0, `github.com/simoncozens/open-source-bible-data`); WLC 4.20 hebreo completo con Strong+morfología Robinson (OSIS, dominio público, `github.com/openscriptures/morphhb`); eBible.org publica OSIS con milestones para muchas traducciones libres.
 
 ### Flujo de datos
 

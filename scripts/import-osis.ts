@@ -45,7 +45,7 @@ import {
   writeBooks,
   writeManifestMeta,
 } from "../src/lib/db/sqlite.ts";
-import { BOOKLIST, bookIdByOsisName, bookIdBySblCode, bookIdByUsfxCode } from "../src/lib/canon.ts";
+import { BOOKLIST, bookIdByOsisId, bookIdByOsisName, bookIdBySblCode, bookIdByUsfxCode } from "../src/lib/canon.ts";
 
 /* ------------------------------------------------------------------ */
 /* Entidades XML Latin-1 comunes (español y generales)                  */
@@ -149,9 +149,18 @@ function strongFromAttrs(attrs: Record<string, string>): string | null {
   return null;
 }
 
+/** Extrae el strong hebreo desde lemma de morphhb/WLC: "b/7225", "b/d/1870", "1254 a", "8423+", "853" → H-código.
+ *  Partículas sin raíz ("b", "c/b") no devuelven strong. No devuelve nada si no tiene forma de número Strong. */
+function hebrewStrongFromLemma(raw: string): string | null {
+  const m = raw.trim().match(/^[a-z/]*(\d+)(?:\s*[a-z+])?$/i);
+  if (!m) return null;
+  return normalizeStrong(`H${m[1]}`);
+}
+
 function buildParser(
   emit: (v: VerseData) => void,
   log: (msg: string) => void,
+  opts: { dropWordSlash?: boolean } = {},
 ): { parser: sax.SAXParser; state: ParserState } {
   const state: ParserState = {
     book: null,
@@ -239,7 +248,7 @@ function buildParser(
         const id = attrs.id
           ? bookIdByUsfxCode(attrs.id)
           : attrs.osisID
-            ? bookIdByOsisName(attrs.osisID)
+            ? (bookIdByOsisName(attrs.osisID) ?? bookIdByOsisId(attrs.osisID))
             : attrs.num
               ? bookIdBySblCode(attrs.num)
               : undefined;
@@ -251,7 +260,7 @@ function buildParser(
       }
       case "div": {
         if (attrs.type === "book" && attrs.osisID) {
-          const id = bookIdByOsisName(attrs.osisID);
+          const id = bookIdByOsisName(attrs.osisID) ?? bookIdByOsisId(attrs.osisID);
           closeVerse();
           if (!id) state.unknownBooks.push(attrs.osisID);
           state.book = id ?? null;
@@ -311,16 +320,19 @@ function buildParser(
       case "w": {
         // USFX: <w s="H7225">texto</w> — OSIS: <w lemma="strong:G3056" morph="…">texto</w>
         // simple-xml: <w pos="V-" morph="3AAI-S--" lemma="γεννάω" strongs="01080">texto</w>
+        // OSIS hebreo (morphhb): <w lemma="b/7225" morph="HR/Ncfsa">בְּ/רֵאשִׁ֖ית</w>
         flushPlain();
         state.inWord = true;
+        const srcLemma = attrs.lemma ? String(attrs.lemma).trim() : null;
+        const hebrewStrong = srcLemma ? hebrewStrongFromLemma(srcLemma) : null;
         const strong =
           (attrs.s ?? "").trim() ||
           strongFromAttrs(attrs) ||
+          hebrewStrong ||
           (attrs.strongs ? `G${String(attrs.strongs).trim()}` : "");
         state.wordStrong = strong ? normalizeStrong(strong) : null;
         state.wordMorph = attrs.morph ? String(attrs.morph).trim() : attrs.pos ? String(attrs.pos).trim() : null;
-        const srcLemma = attrs.lemma ? String(attrs.lemma).trim() : null;
-        state.wordLemma = srcLemma && !/^strong:/i.test(srcLemma) ? srcLemma : null;
+        state.wordLemma = srcLemma && !/^strong:/i.test(srcLemma) && !hebrewStrong ? srcLemma : null;
         break;
       }
       case "seg": {
@@ -362,11 +374,12 @@ function buildParser(
 
   const onText = (raw: string): void => {
     if (state.skipDepth > 0 || state.verse === null) return;
-    const text = decodeEntities(raw);
-    if (!text) return;
-    state.vText += text;
-    if (state.inWord) state.wordText += text;
-    else state.plainBuffer += text;
+    const text = opts.dropWordSlash ? raw.replaceAll("/", "") : raw;
+    const decoded = decodeEntities(text);
+    if (!decoded) return;
+    state.vText += decoded;
+    if (state.inWord) state.wordText += decoded;
+    else state.plainBuffer += decoded;
   };
   parser.ontext = onText;
   parser.oncdata = onText;
@@ -416,6 +429,7 @@ interface ManifestFlags {
   description?: string;
   deps?: string[];
   strongScheme?: string;
+  dropWordSlash?: boolean;
 }
 
 function flagValue(args: string[], name: string): string | undefined {
@@ -521,7 +535,9 @@ function importModule(sourcePath: string, moduleId: string, flags: ManifestFlags
 
   const t0 = performance.now();
   console.log(`${FORMAT_LABEL[format]}: ${(xml.length / 1024 / 1024).toFixed(1)} MB XML`);
-  const { parser, state } = buildParser(emit, (msg) => console.log(`  ${msg}`));
+  const { parser, state } = buildParser(emit, (msg) => console.log(`  ${msg}`), {
+    dropWordSlash: flags.dropWordSlash,
+  });
   parser.write(xml).close();
   flushBook();
 
@@ -565,7 +581,7 @@ const [sourcePath, moduleId] = args;
 if (!sourcePath || !moduleId) {
   console.error(
     "Uso: node scripts/import-osis.ts <archivo.xml|.usfx|.zip> <ID_MODULO> [--name …] [--lang es] [--version 1.0.0]\n" +
-      "     [--publisher …] [--license …] [--year …] [--description …] [--deps a,b] [--strong-scheme …]",
+      "     [--publisher …] [--license …] [--year …] [--description …] [--deps a,b] [--strong-scheme …] [--drop-word-slash]",
   );
   process.exit(1);
 }
@@ -580,6 +596,7 @@ const flags: ManifestFlags = {
   description: flagValue(args, "--description"),
   deps: flagValue(args, "--deps")?.split(",").map((s) => s.trim()).filter(Boolean),
   strongScheme: flagValue(args, "--strong-scheme"),
+  dropWordSlash: args.includes("--drop-word-slash"),
 };
 
 try {
