@@ -1,4 +1,5 @@
 import { getLexiconDb, getModuleDb, normalizeText } from "../db/sqlite.ts";
+import { getModule } from "../modules/registry.ts";
 import type {
   BibleLanguage,
   BibleModuleId,
@@ -12,20 +13,20 @@ import type {
   WordToken,
 } from "../../types/bible.ts";
 
-export const MODULE_LANGUAGES: Record<BibleModuleId, BibleLanguage> = {
-  RV1909: "es",
-  NA28: "el",
-  WTT: "he",
-};
-
-const VALID_MODULES: BibleModuleId[] = ["RV1909", "NA28", "WTT"];
+/** Idioma de un módulo, resuelto desde su manifest (antes: tabla hardcodeada). */
+function moduleLanguage(moduleId: string): BibleLanguage {
+  const info = getModule(moduleId);
+  if (info?.language === "es") return "es";
+  if (info?.language === "el") return "el";
+  return "he";
+}
 
 export function parseModules(raw: string | null): BibleModuleId[] {
   if (!raw) return ["RV1909"];
   return raw
     .split(",")
     .map((m) => m.trim().toUpperCase())
-    .filter((m): m is BibleModuleId => VALID_MODULES.includes(m as BibleModuleId))
+    .filter((m): m is BibleModuleId => getModule(m) !== null)
     .slice(0, 4);
 }
 
@@ -110,7 +111,7 @@ export function readChapter(book: string, chapterRaw: string, modulesRaw: string
       };
     });
 
-    modules.push({ moduleId, language: MODULE_LANGUAGES[moduleId], verses: versePayloads });
+    modules.push({ moduleId, language: moduleLanguage(moduleId), verses: versePayloads });
   }
 
   return {

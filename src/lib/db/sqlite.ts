@@ -42,6 +42,20 @@ CREATE INDEX IF NOT EXISTS idx_palabras_strong ON palabras_interlineal(strong_id
 CREATE INDEX IF NOT EXISTS idx_palabras_alineacion ON palabras_interlineal(alineacion_id);
 `;
 
+export const SCHEMA_MODULE_META = `
+CREATE TABLE IF NOT EXISTS meta (
+  clave TEXT PRIMARY KEY,
+  valor TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS libros (
+  id TEXT PRIMARY KEY,
+  nombre TEXT NOT NULL,
+  capitulos INTEGER NOT NULL,
+  orden INTEGER NOT NULL
+);
+`;
+
 export const SCHEMA_LEXICON = `
 CREATE TABLE IF NOT EXISTS diccionario (
   strong_id TEXT PRIMARY KEY,
@@ -108,6 +122,47 @@ export function getModuleDb(moduleId: string): Database.Database {
 
 export function getLexiconDb(): Database.Database {
   return getModuleDb("lexicon");
+}
+
+/** Cierra y descarta la conexión en caché (usado por uninstall). */
+export function closeModuleDb(moduleId: string): void {
+  const db = moduleCache.get(moduleId);
+  if (db) {
+    db.close();
+    moduleCache.delete(moduleId);
+  }
+}
+
+/** Escribe el manifest en la tabla meta (claves con prefijo "manifest_"). */
+export function writeManifestMeta(db: Database.Database, manifest: Record<string, string>): void {
+  const ins = db.prepare(
+    `INSERT INTO meta (clave, valor) VALUES (?, ?)
+     ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor`,
+  );
+  const tx = db.transaction(() => {
+    for (const [k, v] of Object.entries(manifest)) {
+      ins.run(`manifest_${k}`, v);
+    }
+  });
+  tx();
+}
+
+/** Pobla la tabla canónica de libros. */
+export function writeBooks(
+  db: Database.Database,
+  books: { id: string; nombre: string; capitulos: number; orden: number }[],
+): void {
+  db.exec("DELETE FROM libros;");
+  const ins = db.prepare(`INSERT INTO libros (id, nombre, capitulos, orden) VALUES (?, ?, ?, ?)`);
+  const tx = db.transaction(() => {
+    for (const b of books) ins.run(b.id, b.nombre, b.capitulos, b.orden);
+  });
+  tx();
+}
+
+/** Crea las tablas meta/libros en un módulo (idempotente). */
+export function initModuleMeta(db: Database.Database): void {
+  db.exec(SCHEMA_MODULE_META);
 }
 
 export function initModuleDb(moduleId: string): Database.Database {

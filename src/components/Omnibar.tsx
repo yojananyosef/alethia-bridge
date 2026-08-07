@@ -5,6 +5,7 @@ import { Command } from "cmdk";
 import { Search } from "lucide-react";
 import { useExegesisStore } from "../store/useExegesisStore";
 import type { ThemeId } from "../types/bible";
+import type { ModuleInfo } from "../types/module";
 
 const THEMES: { id: ThemeId; label: string }[] = [
   { id: "academic-paper", label: "Papel académico" },
@@ -15,7 +16,8 @@ const THEMES: { id: ThemeId; label: string }[] = [
 export function Omnibar() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const { syncGroupA, setSyncGroupA, activeTheme, setActiveTheme, activeModules, toggleModule } =
+  const [modules, setModules] = useState<ModuleInfo[]>([]);
+  const { setSyncGroupA, activeTheme, setActiveTheme, activeModules, toggleModule } =
     useExegesisStore();
 
   useEffect(() => {
@@ -29,22 +31,41 @@ export function Omnibar() {
     return () => document.removeEventListener("keydown", down);
   }, []);
 
+  // Lista de módulos desde el registry (antes: hardcodeada)
+  useEffect(() => {
+    let cancelled = false;
+    void fetch("/api/modules", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d: { modules?: ModuleInfo[] }) => {
+        if (!cancelled) setModules(d.modules ?? []);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
+
   const commands = useMemo(() => {
-    const nav = ["Jn", "Gen", "Apo"].flatMap((book) =>
-      [1, 3, 10, 16, 21].map((chapter) => ({
-        id: `nav-${book}-${chapter}`,
-        label: `Ir a ${book} ${chapter}`,
-        keywords: [book.toLowerCase(), String(chapter)],
+    const bibles = modules.filter((m) => m.type === "bible");
+    const primaryBooks =
+      bibles
+        .filter((m) => m.status === "installed" && (m.books?.length ?? 0) > 0)
+        .sort((a, b) => (b.books?.length ?? 0) - (a.books?.length ?? 0))[0]?.books ?? [];
+    const nav = primaryBooks.flatMap((b) =>
+      [1, Math.max(1, Math.floor(b.capitulos / 2)), b.capitulos].map((chapter) => ({
+        id: `nav-${b.id}-${chapter}`,
+        label: `Ir a ${b.nombre} ${chapter}`,
+        keywords: [b.id.toLowerCase(), b.nombre.toLowerCase(), String(chapter)],
         group: "navigation" as const,
-        onSelect: () => setSyncGroupA({ book, chapter, verse: 1 }),
+        onSelect: () => setSyncGroupA({ book: b.id, chapter, verse: 1 }),
       })),
     );
-    const modules = ["RV1909", "NA28", "WTT"].map((m) => ({
-      id: `mod-${m}`,
-      label: `${activeModules.includes(m) ? "Ocultar" : "Mostrar"} módulo ${m}`,
-      keywords: [m.toLowerCase(), "módulo", "modules"],
+    const mods = bibles.map((m) => ({
+      id: `mod-${m.id}`,
+      label: `${activeModules.includes(m.id) ? "Ocultar" : "Mostrar"} módulo ${m.id}`,
+      keywords: [m.id.toLowerCase(), "módulo", "modules"],
       group: "modules" as const,
-      onSelect: () => toggleModule(m),
+      onSelect: () => toggleModule(m.id),
     }));
     const themes = THEMES.map((t) => ({
       id: `theme-${t.id}`,
@@ -53,8 +74,8 @@ export function Omnibar() {
       group: "theme" as const,
       onSelect: () => setActiveTheme(t.id),
     }));
-    return [...nav, ...modules, ...themes];
-  }, [activeModules, setSyncGroupA, toggleModule, setActiveTheme]);
+    return [...nav, ...mods, ...themes];
+  }, [modules, activeModules, setSyncGroupA, toggleModule, setActiveTheme]);
 
   return (
     <>

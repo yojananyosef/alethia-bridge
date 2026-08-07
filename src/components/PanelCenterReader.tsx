@@ -91,6 +91,11 @@ export function PanelCenterReader() {
       </header>
       <div className="flex-1 overflow-y-auto px-6 py-4 leading-relaxed">
         {error ? <p className="text-sm text-red-500">{error}</p> : null}
+        {data && verses.length === 0 && (
+          <p className="text-sm text-[var(--muted)]">
+            Los módulos activos no tienen contenido para {syncGroupA.book} {syncGroupA.chapter}.
+          </p>
+        )}
         {verses.map((v) => (
           <VerseView key={v.verse} verseNo={v.verse} modules={data?.modules ?? []} />
         ))}

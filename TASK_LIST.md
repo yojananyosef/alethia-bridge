@@ -47,5 +47,22 @@ Monolito modular Next.js 16 (App Router) + TypeScript strict + RSC + Zustand + T
 - [x] **Validación:** `curl` real (read/search/lexicon/morph = 200, griego y sin-acento OK) + `npx tsc --noEmit` (0 errores) + 7/7 tests + `bun run build` OK
 
 ## FASE 5 — Validaciones, Tests TDD y Documentación ✅
-- [x] Test de integración SLA: `/api/bible/read` < 10ms y `/api/bible/search` < 30ms (7/7 tests pasan)
+- [x] Test de integración SLA: `/api/bible/read` < 10ms y `/api/bible/search` < 30ms (11/11 tests pasan)
 - [x] Resumen final de arquitectura en `README.md`
+
+## FASE 6 — Sistema de Módulos Instalables (.abmod) ✅
+- [x] `src/types/module.ts`: `ModuleManifest`, `ModuleInfo`, canon (`ModuleBook`), `APP_SCHEMA_VERSION`
+- [x] Tablas `meta` + `libros` en sqlite.ts y seed con manifests de RV1909/NA28/WTT/lexicon + canon 66 libros OSIS
+- [x] `src/lib/modules/registry.ts`: discovery de `data/modules/*.db`, estado enable/disable (`.state.json`), módulo primario, validación de dependencias
+- [x] `src/lib/modules/package.ts`: formato `.abmod` (zip `manifest.json` + `module.db`) con fflate; instalación atómica temp+rename
+- [x] `scripts/package-module.ts` (`bun run package <id>`) → `dist-modules/<id>-<version>.abmod`
+- [x] API: `GET/POST /api/modules` (lista + instalar multipart) y `PATCH/DELETE /api/modules/:id` (enable/disable/uninstall)
+- [x] UI: navegación canónica dinámica desde el módulo primario, gestor de módulos (toggle/instalar/desinstalar) en el panel izquierdo, Omnibar con lista del registry, aviso de capítulo sin contenido
+- [x] Service: `MODULE_LANGUAGES` y módulos válidos reemplazados por resolución vía registry
+- [x] Tests: list/toggle/install/uninstall/rechazo de paquetes inválidos (11/11) + `bun run build` OK
+
+## Próximos pasos (roadmap módulos)
+- [ ] Importador USFM/MyBible + OSIS milestones (ETL generalizado)
+- [ ] Tipos de módulo `commentary`/`crossref`/`devotion` con renderizado dedicado
+- [ ] Registry remoto con checksums SHA-256 y actualizaciones por versión
+- [ ] Datos de usuario keyeados por `moduleId + osisRef` (independientes de la versión del módulo)

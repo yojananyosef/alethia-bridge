@@ -22,26 +22,49 @@ app/
   layout.tsx            # layout raíz + ExegesisProvider (metadatos, fuentes)
   page.tsx              # header + Omnibar + Workspace
   globals.css           # temas (CSS vars + data-theme)
-  api/bible/
-    read/route.ts       # GET /api/bible/read  (capítulo interlineal + ?lexicon= + ?morph=)
-    search/route.ts     # GET /api/bible/search (FTS5, insensible a acentos)
+  api/
+    bible/
+      read/route.ts     # GET /api/bible/read  (capítulo interlineal + ?lexicon= + ?morph=)
+      search/route.ts   # GET /api/bible/search (FTS5, insensible a acentos)
+    modules/
+      route.ts          # GET /api/modules (lista) · POST (instalar .abmod)
+      [id]/route.ts     # PATCH (enable/disable) · DELETE (desinstalar)
 scripts/
-  seed-test-db.ts       # genera los SQLite de prueba (Juan 3 completo)
+  seed-test-db.ts       # genera los SQLite de prueba (Juan 3 completo + manifests + canon)
   import-osis.ts        # ETL borrador: OSIS XML → SQLite
+  package-module.ts     # empaqueta un módulo instalado a .abmod (bun run package <id>)
 src/
-  lib/db/sqlite.ts      # conexiones WAL, esquema, normalizeText
+  lib/db/sqlite.ts      # conexiones WAL, esquema, normalizeText, meta/libros
   lib/db/dexie-user-db.ts  # notas y resaltados locales (IndexedDB)
   lib/bible/service.ts  # readChapter, searchBible, getLexiconEntry, getMorphology
-  types/bible.ts        # tipos estrictos del dominio
+  lib/modules/
+    registry.ts         # discovery de módulos: manifest, canon, estado enable/disable
+    package.ts          # formato .abmod: empaquetar/instalar (fflate)
+  types/bible.ts        # tipos estrictos del dominio bíblico
+  types/module.ts       # ModuleManifest / ModuleInfo / canon
   store/useExegesisStore.ts  # estado global Zustand
   components/
     Workspace.tsx           # 3 paneles redimensionables (react-resizable-panels v4)
-    PanelLeftNavigation.tsx # libros/capítulos + toggle de módulos
+    PanelLeftNavigation.tsx # canon dinámico desde el módulo primario + gestor de módulos
     PanelCenterReader.tsx   # lector interlineal multipanel
     PanelRightAnalysis.tsx  # léxico/morfología + notas TipTap
     interlinear/WordTokenView.tsx  # token memoizado, hover sin re-renders
     Omnibar.tsx             # cmd+K: navegación, módulos, temas
 ```
+
+### Sistema de módulos (.abmod)
+
+Cada módulo es una base SQLite con su **manifest** (tabla `meta`) y, para biblias, el **canon** (tabla `libros`). El registry escanea `data/modules/*.db` en cada petición, resuelve idioma/estado y expone todo vía `/api/modules`.
+
+**Formato `.abmod`**: zip con `manifest.json` + `module.db` (copia limpia sin WAL).
+
+```bash
+bun run package RV1909        # → dist-modules/RV1909-0.1.0.abmod
+```
+
+Instalación: botón "+" en el panel izquierdo (sube el `.abmod`) o `POST /api/modules`. El instalador valida manifest (id, schemaVersion, duplicados) y dependencias; escribe con temp+rename (atómico). Desinstalar: `DELETE /api/modules/:id`.
+
+Tipos de módulo: `bible`, `lexicon`, `commentary`, `crossref`, `devotion`. Los módulos biblia definen el canon (66 libros OSIS) que alimenta la navegación y el Omnibar.
 
 ### Flujo de datos
 

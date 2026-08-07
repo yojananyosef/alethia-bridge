@@ -14,7 +14,15 @@
  *
  * Ejecutar: bun run seed  (corre bajo Node, donde better-sqlite3 funciona)
  */
-import { initLexiconDb, initModuleDb, normalizeText } from "../src/lib/db/sqlite.ts";
+import {
+  getModuleDb,
+  initLexiconDb,
+  initModuleDb,
+  initModuleMeta,
+  normalizeText,
+  writeBooks,
+  writeManifestMeta,
+} from "../src/lib/db/sqlite.ts";
 import type Database from "better-sqlite3";
 
 const LIBRO = "Jn";
@@ -346,6 +354,136 @@ const V16_MORPH: Record<string, string> = {
   G166: "A-ASF",
 };
 
+/** Canon estándar de 66 libros (abreviaturas OSIS, nombres en español). */
+const BOOKLIST: { id: string; nombre: string; capitulos: number }[] = [
+  { id: "Gen", nombre: "Génesis", capitulos: 50 },
+  { id: "Exo", nombre: "Éxodo", capitulos: 40 },
+  { id: "Lev", nombre: "Levítico", capitulos: 27 },
+  { id: "Num", nombre: "Números", capitulos: 36 },
+  { id: "Deu", nombre: "Deuteronomio", capitulos: 34 },
+  { id: "Jos", nombre: "Josué", capitulos: 24 },
+  { id: "Jdg", nombre: "Jueces", capitulos: 21 },
+  { id: "Rut", nombre: "Rut", capitulos: 4 },
+  { id: "1Sa", nombre: "1 Samuel", capitulos: 31 },
+  { id: "2Sa", nombre: "2 Samuel", capitulos: 24 },
+  { id: "1Ki", nombre: "1 Reyes", capitulos: 22 },
+  { id: "2Ki", nombre: "2 Reyes", capitulos: 25 },
+  { id: "1Ch", nombre: "1 Crónicas", capitulos: 29 },
+  { id: "2Ch", nombre: "2 Crónicas", capitulos: 36 },
+  { id: "Ezr", nombre: "Esdras", capitulos: 10 },
+  { id: "Neh", nombre: "Nehemías", capitulos: 13 },
+  { id: "Est", nombre: "Ester", capitulos: 10 },
+  { id: "Job", nombre: "Job", capitulos: 42 },
+  { id: "Psa", nombre: "Salmos", capitulos: 150 },
+  { id: "Pro", nombre: "Proverbios", capitulos: 31 },
+  { id: "Ecc", nombre: "Eclesiastés", capitulos: 12 },
+  { id: "Sng", nombre: "Cantares", capitulos: 8 },
+  { id: "Isa", nombre: "Isaías", capitulos: 66 },
+  { id: "Jer", nombre: "Jeremías", capitulos: 52 },
+  { id: "Lam", nombre: "Lamentaciones", capitulos: 5 },
+  { id: "Ezk", nombre: "Ezequiel", capitulos: 48 },
+  { id: "Dan", nombre: "Daniel", capitulos: 12 },
+  { id: "Hos", nombre: "Oseas", capitulos: 14 },
+  { id: "Joe", nombre: "Joel", capitulos: 3 },
+  { id: "Amo", nombre: "Amós", capitulos: 9 },
+  { id: "Oba", nombre: "Abdías", capitulos: 1 },
+  { id: "Jon", nombre: "Jonás", capitulos: 4 },
+  { id: "Mic", nombre: "Miqueas", capitulos: 7 },
+  { id: "Nah", nombre: "Nahúm", capitulos: 3 },
+  { id: "Hab", nombre: "Habacuc", capitulos: 3 },
+  { id: "Zep", nombre: "Sofonías", capitulos: 3 },
+  { id: "Hag", nombre: "Hageo", capitulos: 2 },
+  { id: "Zec", nombre: "Zacarías", capitulos: 14 },
+  { id: "Mal", nombre: "Malaquías", capitulos: 4 },
+  { id: "Mat", nombre: "Mateo", capitulos: 28 },
+  { id: "Mrk", nombre: "Marcos", capitulos: 16 },
+  { id: "Luk", nombre: "Lucas", capitulos: 24 },
+  { id: "Jn", nombre: "Juan", capitulos: 21 },
+  { id: "Act", nombre: "Hechos", capitulos: 28 },
+  { id: "Rom", nombre: "Romanos", capitulos: 16 },
+  { id: "1Co", nombre: "1 Corintios", capitulos: 16 },
+  { id: "2Co", nombre: "2 Corintios", capitulos: 13 },
+  { id: "Gal", nombre: "Gálatas", capitulos: 6 },
+  { id: "Eph", nombre: "Efesios", capitulos: 6 },
+  { id: "Php", nombre: "Filipenses", capitulos: 4 },
+  { id: "Col", nombre: "Colosenses", capitulos: 4 },
+  { id: "1Th", nombre: "1 Tesalonicenses", capitulos: 5 },
+  { id: "2Th", nombre: "2 Tesalonicenses", capitulos: 3 },
+  { id: "1Ti", nombre: "1 Timoteo", capitulos: 6 },
+  { id: "2Ti", nombre: "2 Timoteo", capitulos: 4 },
+  { id: "Tit", nombre: "Tito", capitulos: 3 },
+  { id: "Phm", nombre: "Filemón", capitulos: 1 },
+  { id: "Heb", nombre: "Hebreos", capitulos: 13 },
+  { id: "Jas", nombre: "Santiago", capitulos: 5 },
+  { id: "1Pe", nombre: "1 Pedro", capitulos: 5 },
+  { id: "2Pe", nombre: "2 Pedro", capitulos: 3 },
+  { id: "1Jn", nombre: "1 Juan", capitulos: 5 },
+  { id: "2Jn", nombre: "2 Juan", capitulos: 1 },
+  { id: "3Jn", nombre: "3 Juan", capitulos: 1 },
+  { id: "Jud", nombre: "Judas", capitulos: 1 },
+  { id: "Rev", nombre: "Apocalipsis", capitulos: 22 },
+];
+
+/** Manifests de los módulos del seed (claves de la tabla meta, prefijo manifest_). */
+const MANIFESTS: Record<string, Record<string, string>> = {
+  RV1909: {
+    id: "RV1909",
+    name: "Reina-Valera 1909",
+    type: "bible",
+    language: "es",
+    version: "0.1.0",
+    publisher: "Dominio público",
+    license: "Public Domain",
+    year: "1909",
+    description: "Reina-Valera 1909 — texto de prueba: Juan 3 completo.",
+    schemaVersion: "1",
+    bookOrder: BOOKLIST.map((b) => b.id).join(","),
+  },
+  NA28: {
+    id: "NA28",
+    name: "Novum Testamentum Graece (NA28/SBLGNT demo)",
+    type: "bible",
+    language: "el",
+    version: "0.1.0",
+    publisher: "SBLGNT © Society of Biblical Literature",
+    license: "SBLGNT license (uso libre)",
+    year: "2010",
+    description: "Nuevo Testamento Griego — texto de prueba: Juan 3 completo, con Strong y morfología.",
+    schemaVersion: "1",
+    dependencies: "lexicon",
+    strongScheme: "strong",
+    bookOrder: BOOKLIST.map((b) => b.id).join(","),
+  },
+  WTT: {
+    id: "WTT",
+    name: "Biblia Hebraica Stuttgartensia (WTT)",
+    type: "bible",
+    language: "he",
+    version: "0.1.0",
+    publisher: "Deutsche Bibelgesellschaft",
+    license: "Copyright — sin texto incluido",
+    year: "1997",
+    description: "Texto hebreo del AT — módulo vacío (placeholder).",
+    schemaVersion: "1",
+    dependencies: "lexicon",
+    strongScheme: "morphhb",
+    bookOrder: BOOKLIST.map((b) => b.id).join(","),
+  },
+  lexicon: {
+    id: "lexicon",
+    name: "Diccionario Strong español",
+    type: "lexicon",
+    language: "el",
+    version: "0.1.0",
+    publisher: "Alethia Bridge",
+    license: "Uso interno",
+    year: "2026",
+    description: "Léxico griego Strong con definiciones en español y parsing morfológico.",
+    schemaVersion: "1",
+    strongScheme: "strong",
+  },
+};
+
 /** Convierte texto en tokens, separando puntuación. */
 function tokenize(text: string): Token[] {
   const re = /[\p{L}\p{M}\p{N}]+(?:['’][\p{L}\p{M}\p{N}]+)*|[^\p{L}\p{M}\p{N}\s]+/gu;
@@ -489,6 +627,14 @@ function main(): void {
     if (vi === 15) return V16_ALIGN; // Juan 3:16 → alineación palabra a palabra
     return autoAlign(esTokens[vi], grTokens[vi]);
   });
+
+  // Manifest + canon de cada módulo (meta/libros)
+  for (const id of ["RV1909", "NA28", "WTT", "lexicon"]) {
+    const db = getModuleDb(id);
+    initModuleMeta(db);
+    writeManifestMeta(db, MANIFESTS[id]);
+    if (id !== "lexicon") writeBooks(db, BOOKLIST.map((b, i) => ({ ...b, orden: i + 1 })));
+  }
 
   seedModule(initModuleDb("RV1909"), lexicon, "es", groupsByVerse);
   seedModule(initModuleDb("NA28"), lexicon, "gr", groupsByVerse);

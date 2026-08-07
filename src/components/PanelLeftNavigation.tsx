@@ -1,22 +1,24 @@
 "use client";
 
-import { BookOpenText } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { BookOpenText, PackagePlus, Trash2 } from "lucide-react";
 import { useExegesisStore } from "../store/useExegesisStore";
+import type { ModuleBook, ModuleInfo } from "../types/module";
 
-const BOOKS = [
-  { id: "Gen", chapters: 50 },
-  { id: "Jn", chapters: 21 },
-  { id: "Apo", chapters: 22 },
-];
+async function fetchModules(): Promise<ModuleInfo[]> {
+  const res = await fetch("/api/modules", { cache: "no-store" });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const body = (await res.json()) as { modules: ModuleInfo[] };
+  return body.modules;
+}
 
-function BookItem({ book }: { book: string }) {
+function BookItem({ book, chapters }: { book: ModuleBook; chapters: number }) {
   const { syncGroupA, setSyncGroupA } = useExegesisStore();
-  const isActive = syncGroupA.book === book;
-  const meta = BOOKS.find((b) => b.id === book)!;
+  const isActive = syncGroupA.book === book.id;
   return (
     <div className="px-1">
       <button
-        onClick={() => setSyncGroupA({ book, chapter: 1, verse: 1 })}
+        onClick={() => setSyncGroupA({ book: book.id, chapter: 1, verse: 1 })}
         className={`w-full rounded px-2 py-1 text-left text-sm ${
           isActive
             ? "bg-[var(--accent-soft)] font-semibold text-[var(--accent)]"
@@ -24,14 +26,14 @@ function BookItem({ book }: { book: string }) {
         }`}
       >
         <BookOpenText className="mr-1 inline h-3.5 w-3.5" />
-        {book}
+        {book.nombre}
       </button>
       {isActive && (
         <div className="mt-1 grid grid-cols-7 gap-1 pl-3">
-          {Array.from({ length: meta.chapters }, (_, i) => i + 1).map((c) => (
+          {Array.from({ length: chapters }, (_, i) => i + 1).map((c) => (
             <button
               key={c}
-              onClick={() => setSyncGroupA({ book, chapter: c, verse: 1 })}
+              onClick={() => setSyncGroupA({ book: book.id, chapter: c, verse: 1 })}
               className={`rounded px-1 py-0.5 text-xs ${
                 syncGroupA.chapter === c
                   ? "bg-[var(--accent)] text-white"
@@ -48,32 +50,143 @@ function BookItem({ book }: { book: string }) {
 }
 
 export function PanelLeftNavigation() {
-  const activeModules = useExegesisStore((s) => s.activeModules);
-  const toggleModule = useExegesisStore((s) => s.toggleModule);
+  const [modules, setModules] = useState<ModuleInfo[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const refresh = useCallback(async () => {
+    try {
+      setModules(await fetchModules());
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }, []);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  /** Módulo biblia activo con el canon más completo (fuente de navegación). */
+  const primary = useMemo(
+    () =>
+      (modules ?? [])
+        .filter((m) => m.type === "bible" && m.status === "installed" && (m.books?.length ?? 0) > 0)
+        .sort((a, b) => (b.books?.length ?? 0) - (a.books?.length ?? 0))[0] ?? null,
+    [modules],
+  );
+
+  const install = async (file: File) => {
+    setBusy(true);
+    setError(null);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch("/api/modules", { method: "POST", body: form });
+      const body = (await res.json()) as { ok?: boolean; moduleId?: string; error?: string };
+      if (!res.ok || !body.ok) throw new Error(body.error ?? `HTTP ${res.status}`);
+      await refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const toggle = async (m: ModuleInfo) => {
+    setModules((prev) =>
+      prev === null
+        ? prev
+        : prev.map((x) =>
+            x.id === m.id ? { ...x, status: x.status === "installed" ? "disabled" : "installed" } : x,
+          ),
+    );
+    try {
+      await fetch(`/api/modules/${encodeURIComponent(m.id)}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ enabled: m.status === "disabled" }),
+      });
+      await refresh();
+    } catch {
+      await refresh();
+    }
+  };
+
+  const uninstall = async (m: ModuleInfo) => {
+    if (!window.confirm(`¿Desinstalar el módulo "${m.name}" (${m.id})?`)) return;
+    try {
+      const res = await fetch(`/api/modules/${encodeURIComponent(m.id)}`, { method: "DELETE" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      await refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  };
+
   return (
     <aside className="flex h-full flex-col border-r border-[var(--border)] bg-[var(--panel)]">
       <div className="border-b border-[var(--border)] px-3 py-2 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
         Biblias
       </div>
       <nav className="flex-1 overflow-y-auto p-2">
-        {BOOKS.map((b) => (
-          <BookItem key={b.id} book={b.id} />
-        ))}
+        {primary ? (
+          primary.books!.map((b) => (
+            <BookItem key={b.id} book={b} chapters={b.capitulos} />
+          ))
+        ) : (
+          <p className="px-2 text-xs text-[var(--muted)]">
+            {modules === null ? "Cargando…" : "No hay módulos biblia activos."}
+          </p>
+        )}
       </nav>
       <div className="border-t border-[var(--border)] px-3 py-2">
-        <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--muted)]">
-          Módulos
+        <div className="mb-1 flex items-center justify-between">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted)]">
+            Módulos
+          </span>
+          <button
+            onClick={() => fileRef.current?.click()}
+            disabled={busy}
+            className="rounded p-0.5 text-[var(--muted)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] disabled:opacity-50"
+            title="Instalar .abmod"
+          >
+            <PackagePlus className="h-3.5 w-3.5" />
+          </button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".abmod"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) void install(f);
+              e.target.value = "";
+            }}
+          />
         </div>
-        {["RV1909", "NA28", "WTT"].map((m) => (
-          <label key={m} className="flex cursor-pointer items-center gap-1.5 py-0.5 text-xs">
+        {error && <p className="mb-1 text-[10px] text-red-500">{error}</p>}
+        {(modules ?? []).map((m) => (
+          <div key={m.id} className="flex items-center gap-1.5 py-0.5 text-xs">
             <input
               type="checkbox"
-              checked={activeModules.includes(m)}
-              onChange={() => toggleModule(m)}
+              checked={m.status === "installed"}
+              onChange={() => void toggle(m)}
               className="accent-[var(--accent)]"
             />
-            {m}
-          </label>
+            <span className="flex-1 truncate" title={`${m.name} v${m.version} · ${m.type}`}>
+              {m.id}
+              <span className="ml-1 text-[10px] text-[var(--muted)]">v{m.version}</span>
+            </span>
+            <button
+              onClick={() => void uninstall(m)}
+              className="rounded p-0.5 text-[var(--muted)] transition-colors hover:bg-red-100 hover:text-red-600"
+              title={`Desinstalar ${m.id}`}
+            >
+              <Trash2 className="h-3 w-3" />
+            </button>
+          </div>
         ))}
       </div>
     </aside>
