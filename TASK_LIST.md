@@ -95,6 +95,15 @@ Monolito modular Next.js 16 (App Router) + TypeScript strict + RSC + Zustand + T
 - [x] Empaquetado: `dist-modules/WLC-1.0.0.abmod` (18 MB); 13/13 tests × 2; tsc+lint limpios
 - [x] Fix test SLA búsqueda: warm-up con la misma query (cold-start FTS por término, no por módulo)
 
+## FASE 10 — Diccionario Strong real (lexicon) ✅
+- [x] `scripts/import-lexicon.ts` (nuevo, SAX): reconstruye `data/modules/lexicon.db` manteniendo `parsing_gramatical`; escribe manifest → empaquetable
+- [x] **Hebreo**: `HebrewStrong.xml` (StrongSchema/OpenScriptures, CC BY 4.0) → 8.674 entradas (lema, translit, pronunciación, `meaning` corto, `source`+`usage` detallado)
+- [x] **Griego**: `strongsgreek.xml` (morphgnt, CC BY 4.0) → 5.624 entradas (lema unicode, translit, pronunciación, `kjv_def` corto, `strongs_def`+derivation detallado)
+- [x] **Cobertura 100%** de strongs en los 3 módulos reales (RV1909 13.361, SBLGNT 4.843, WLC 8.632) — el 1 restante es un H fuera del rango del diccionario
+- [x] Fix `import-osis.ts`: strongs compuestos USFX ("H5315 H2416") → se toma el primero (RV1909 pasó de 89% a 100%)
+- [x] Seed: `INSERT OR IGNORE` en diccionario (no pisa el diccionario real; solo añade las 40 curadas si faltan)
+- [x] `bun run import:lexicon`; empaquetado `dist-modules/lexicon-1.0.0.abmod` (1 MB); 13/13 tests; tsc+lint limpios
+
 ## Próximos pasos (roadmap módulos)
 - [ ] Tipos de módulo `commentary`/`crossref`/`devotion` con renderizado dedicado
 - [ ] Registry remoto con checksums SHA-256 y actualizaciones por versión

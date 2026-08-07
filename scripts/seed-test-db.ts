@@ -481,9 +481,11 @@ function assignIds(groups: AlignGroup[], prefix: string, side: "es" | "gr"): Map
 }
 
 function insertLexicon(db: Database.Database): void {
-  db.exec("DELETE FROM diccionario; DELETE FROM parsing_gramatical;");
+  // No borrar `diccionario`: si existe el diccionario Strong real (import-lexicon),
+  // las entradas curadas del seed solo se añaden si el strong no está cubierto.
+  db.exec("DELETE FROM parsing_gramatical;");
   const insDic = db.prepare(
-    `INSERT INTO diccionario (strong_id, lema, transliteracion, pronunciacion, definicion_corta, definicion_detallada, dominio_semantico, idioma)
+    `INSERT OR IGNORE INTO diccionario (strong_id, lema, transliteracion, pronunciacion, definicion_corta, definicion_detallada, dominio_semantico, idioma)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
   );
   const insPar = db.prepare(

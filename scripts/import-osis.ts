@@ -330,7 +330,8 @@ function buildParser(
           strongFromAttrs(attrs) ||
           hebrewStrong ||
           (attrs.strongs ? `G${String(attrs.strongs).trim()}` : "");
-        state.wordStrong = strong ? normalizeStrong(strong) : null;
+        // USFX a veces mapea frases a un <w> con varios strongs ("H5315 H2416"): se toma el primero.
+        state.wordStrong = strong ? normalizeStrong(strong.split(/\s+/)[0]) : null;
         state.wordMorph = attrs.morph ? String(attrs.morph).trim() : attrs.pos ? String(attrs.pos).trim() : null;
         state.wordLemma = srcLemma && !/^strong:/i.test(srcLemma) && !hebrewStrong ? srcLemma : null;
         break;

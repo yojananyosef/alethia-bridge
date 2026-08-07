@@ -9,7 +9,8 @@ Software de análisis exegético y estudio bíblico (estilo Logos/Accordance/STE
 ```bash
 bun install          # dependencias (better-sqlite3 usa binario prebuilt; ver ignoreScripts)
 bun run seed         # genera data/modules/*.db (Juan 3 RV1909 + NA28 + léxico Strong + índice FTS5)
-bun run import       # ETL real: USFX/OSIS XML → módulo instalable (node scripts/import-osis.ts)
+bun run import       # ETL real: USFX/OSIS/XML → módulo instalable (node scripts/import-osis.ts)
+bun run import:lexicon  # diccionario Strong completo (8.674 hebreas + 5.624 griegas)
 bun run dev          # servidor de desarrollo en http://localhost:3000
 bun run test         # tests de integración (SLA de la API)
 bun run build        # build de producción
@@ -83,7 +84,7 @@ bun run import data/osis/spa-rv1909.usfx.xml RV1909 \
 - `--drop-word-slash`: elimina los `/` de marcación de prefijos del texto morfológico hebreo (morphhb).
 - El módulo se empaqueta/instala como cualquier otro (`bun run package <id>`).
 
-Fuentes libres probadas: RV1909 completo con Strongs (USFX, dominio público, `github.com/seven1m/open-bibles`); SBLGNT completo con Strong+morfología+lemas (simple-xml, texto SBLGNT EULA, análisis morphgnt CC-BY-SA 3.0, `github.com/simoncozens/open-source-bible-data`); WLC 4.20 hebreo completo con Strong+morfología Robinson (OSIS, dominio público, `github.com/openscriptures/morphhb`); eBible.org publica OSIS con milestones para muchas traducciones libres.
+Fuentes libres probadas: RV1909 completo con Strongs (USFX, dominio público, `github.com/seven1m/open-bibles`); SBLGNT completo con Strong+morfología+lemas (simple-xml, texto SBLGNT EULA, análisis morphgnt CC-BY-SA 3.0, `github.com/simoncozens/open-source-bible-data`); WLC 4.20 hebreo completo con Strong+morfología Robinson (OSIS, dominio público, `github.com/openscriptures/morphhb`); diccionario Strong completo (8.674 hebreas + 5.624 griegas, CC BY 4.0, `import:lexicon`); eBible.org publica OSIS con milestones para muchas traducciones libres.
 
 ### Flujo de datos
 
