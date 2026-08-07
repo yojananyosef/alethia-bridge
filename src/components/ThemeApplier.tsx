@@ -1,23 +1,44 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useExegesisStore } from "../store/useExegesisStore";
 
 /**
- * Aplica el tema activo de Zustand a <html data-theme=...>.
- * Se monta solo en cliente para evitar discrepancias de hidratación.
+ * Aplica el tema activo de Zustand a <html data-theme=...> y maneja la clase .dark.
  */
 export function ThemeApplier() {
   const theme = useExegesisStore((s) => s.activeTheme);
-  const [mounted, setMounted] = useState(false);
+  const setActiveTheme = useExegesisStore((s) => s.setActiveTheme);
 
+  // Cargar tema guardado al iniciar
   useEffect(() => {
-    void Promise.resolve().then(() => setMounted(true));
-  }, []);
+    try {
+      const saved = localStorage.getItem("alethia-theme");
+      if (saved === "academic-paper" || saved === "dark-contrast" || saved === "sepia") {
+        setActiveTheme(saved);
+      }
+    } catch {}
+  }, [setActiveTheme]);
 
+  // Aplicar tema reactivo
   useEffect(() => {
-    if (mounted) document.documentElement.dataset.theme = theme;
-  }, [theme, mounted]);
+    const root = document.documentElement;
+    root.setAttribute("data-theme", theme);
+    document.body.setAttribute("data-theme", theme);
+
+    if (theme === "dark-contrast") {
+      root.classList.add("dark");
+      document.body.classList.add("dark");
+    } else {
+      root.classList.remove("dark");
+      document.body.classList.remove("dark");
+    }
+
+    try {
+      localStorage.setItem("alethia-theme", theme);
+    } catch {}
+  }, [theme]);
 
   return null;
 }
+

@@ -85,8 +85,11 @@ export interface OmnibarCommand {
   action: () => void;
 }
 
+export type ReaderFontSize = "sm" | "base" | "lg" | "xl";
+
 export interface SyncGroupReference {
   book: string;
   chapter: number;
   verse: number;
 }
+

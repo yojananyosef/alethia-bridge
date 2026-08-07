@@ -5,6 +5,7 @@ import { Button } from "../components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -35,16 +36,23 @@ export function ThemeSwitcher() {
         }
       />
       <DropdownMenuContent align="end" className="w-40">
-        <DropdownMenuLabel>Tema</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        {THEMES.map((t) => (
-          <DropdownMenuItem key={t.id} onSelect={() => setActiveTheme(t.id)} className="gap-2">
-            <Check
-              className={`size-3.5 text-primary ${activeTheme === t.id ? "opacity-100" : "opacity-0"}`}
-            />
-            {t.label}
-          </DropdownMenuItem>
-        ))}
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>Tema</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          {THEMES.map((t) => (
+            <DropdownMenuItem
+              key={t.id}
+              onClick={() => setActiveTheme(t.id)}
+              onSelect={() => setActiveTheme(t.id)}
+              className="flex cursor-pointer items-center gap-2"
+            >
+              <Check
+                className={`size-3.5 text-primary ${activeTheme === t.id ? "opacity-100" : "opacity-0"}`}
+              />
+              <span className="flex-1 font-medium">{t.label}</span>
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   );

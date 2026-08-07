@@ -49,3 +49,17 @@ export async function notesForVerse(verseId: string): Promise<UserNote[]> {
 export async function highlightsForVerse(verseId: string): Promise<UserHighlight[]> {
   return userDb.highlights.where("verse_id").equals(verseId).toArray();
 }
+
+export async function deleteNote(id: number): Promise<void> {
+  await userDb.user_notes.delete(id);
+}
+
+export async function deleteHighlight(id: number): Promise<void> {
+  await userDb.highlights.delete(id);
+}
+
+export async function clearHighlightsForVerse(verseId: string): Promise<void> {
+  await userDb.highlights.where("verse_id").equals(verseId).delete();
+}
+
+

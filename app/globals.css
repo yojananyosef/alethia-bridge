@@ -8,7 +8,9 @@
    Los tokens propios (--bg/--panel/--ink/--accent…) alimentan los tokens
    semánticos shadcn: bg-background, text-foreground, text-primary, etc. */
 :root,
-[data-theme="academic-paper"] {
+[data-theme="academic-paper"],
+html[data-theme="academic-paper"],
+body[data-theme="academic-paper"] {
   --bg: #fafaf9;
   --panel: #ffffff;
   --border: #e7e5e4;
@@ -18,38 +20,42 @@
   --amber-soft: rgba(180, 83, 9, 0.12);
   --amber-hover: var(--amber-soft);
 
-  --background: var(--bg);
-  --foreground: var(--ink);
-  --card: var(--panel);
-  --card-foreground: var(--ink);
-  --popover: var(--panel);
-  --popover-foreground: var(--ink);
-  --primary: var(--amber);
+  --background: #fafaf9;
+  --foreground: #1c1917;
+  --card: #ffffff;
+  --card-foreground: #1c1917;
+  --popover: #ffffff;
+  --popover-foreground: #1c1917;
+  --primary: #b45309;
   --primary-foreground: #ffffff;
   --secondary: #f5f5f4;
-  --secondary-foreground: var(--ink);
+  --secondary-foreground: #1c1917;
   --muted: #f5f5f4;
-  --muted-foreground: var(--ink-muted);
-  --accent: var(--amber-soft);
-  --accent-foreground: var(--amber);
-  --input: var(--border);
-  --ring: var(--primary);
+  --muted-foreground: #78716c;
+  --accent: rgba(180, 83, 9, 0.12);
+  --accent-foreground: #b45309;
+  --input: #e7e5e4;
+  --ring: #b45309;
   --chart-1: #b45309;
   --chart-2: #78716c;
   --chart-3: #d6d3d1;
   --chart-4: #57534e;
   --chart-5: #a8a29e;
-  --sidebar: var(--panel);
-  --sidebar-foreground: var(--ink);
-  --sidebar-primary: var(--primary);
+  --sidebar: #ffffff;
+  --sidebar-foreground: #1c1917;
+  --sidebar-primary: #b45309;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: var(--amber-soft);
-  --sidebar-accent-foreground: var(--ink);
-  --sidebar-border: var(--border);
-  --sidebar-ring: var(--primary);
+  --sidebar-accent: rgba(180, 83, 9, 0.12);
+  --sidebar-accent-foreground: #1c1917;
+  --sidebar-border: #e7e5e4;
+  --sidebar-ring: #b45309;
 }
 
-[data-theme="dark-contrast"] {
+[data-theme="dark-contrast"],
+html[data-theme="dark-contrast"],
+body[data-theme="dark-contrast"],
+html.dark,
+.dark {
   --bg: #09090b;
   --panel: #131316;
   --border: #27272a;
@@ -59,38 +65,40 @@
   --amber-soft: rgba(245, 158, 11, 0.16);
   --amber-hover: var(--amber-soft);
 
-  --background: var(--bg);
-  --foreground: var(--ink);
-  --card: var(--panel);
-  --card-foreground: var(--ink);
-  --popover: var(--panel);
-  --popover-foreground: var(--ink);
-  --primary: var(--amber);
+  --background: #09090b;
+  --foreground: #fafafa;
+  --card: #131316;
+  --card-foreground: #fafafa;
+  --popover: #131316;
+  --popover-foreground: #fafafa;
+  --primary: #f59e0b;
   --primary-foreground: #1c1917;
   --secondary: #1c1c1f;
-  --secondary-foreground: var(--ink);
+  --secondary-foreground: #fafafa;
   --muted: #1c1c1f;
-  --muted-foreground: var(--ink-muted);
-  --accent: var(--amber-soft);
-  --accent-foreground: var(--amber);
-  --input: var(--border);
-  --ring: var(--primary);
+  --muted-foreground: #a1a1aa;
+  --accent: rgba(245, 158, 11, 0.16);
+  --accent-foreground: #f59e0b;
+  --input: #27272a;
+  --ring: #f59e0b;
   --chart-1: #f59e0b;
   --chart-2: #a1a1aa;
   --chart-3: #3f3f46;
   --chart-4: #71717a;
   --chart-5: #52525b;
-  --sidebar: var(--panel);
-  --sidebar-foreground: var(--ink);
-  --sidebar-primary: var(--primary);
+  --sidebar: #131316;
+  --sidebar-foreground: #fafafa;
+  --sidebar-primary: #f59e0b;
   --sidebar-primary-foreground: #1c1917;
-  --sidebar-accent: var(--amber-soft);
-  --sidebar-accent-foreground: var(--ink);
-  --sidebar-border: var(--border);
-  --sidebar-ring: var(--primary);
+  --sidebar-accent: rgba(245, 158, 11, 0.16);
+  --sidebar-accent-foreground: #fafafa;
+  --sidebar-border: #27272a;
+  --sidebar-ring: #f59e0b;
 }
 
-[data-theme="sepia"] {
+[data-theme="sepia"],
+html[data-theme="sepia"],
+body[data-theme="sepia"] {
   --bg: #f4ecd8;
   --panel: #fbf5e6;
   --border: #ddd0b4;
@@ -100,41 +108,43 @@
   --amber-soft: rgba(154, 91, 30, 0.14);
   --amber-hover: var(--amber-soft);
 
-  --background: var(--bg);
-  --foreground: var(--ink);
-  --card: var(--panel);
-  --card-foreground: var(--ink);
-  --popover: var(--panel);
-  --popover-foreground: var(--ink);
-  --primary: var(--amber);
+  --background: #f4ecd8;
+  --foreground: #3d2c1e;
+  --card: #fbf5e6;
+  --card-foreground: #3d2c1e;
+  --popover: #fbf5e6;
+  --popover-foreground: #3d2c1e;
+  --primary: #9a5b1e;
   --primary-foreground: #ffffff;
   --secondary: #efe6cf;
-  --secondary-foreground: var(--ink);
+  --secondary-foreground: #3d2c1e;
   --muted: #efe6cf;
-  --muted-foreground: var(--ink-muted);
-  --accent: var(--amber-soft);
-  --accent-foreground: var(--amber);
-  --input: var(--border);
-  --ring: var(--primary);
+  --muted-foreground: #8a7357;
+  --accent: rgba(154, 91, 30, 0.14);
+  --accent-foreground: #9a5b1e;
+  --input: #ddd0b4;
+  --ring: #9a5b1e;
   --chart-1: #9a5b1e;
   --chart-2: #8a7357;
   --chart-3: #ddd0b4;
   --chart-4: #6b5538;
   --chart-5: #b09b7f;
-  --sidebar: var(--panel);
-  --sidebar-foreground: var(--ink);
-  --sidebar-primary: var(--primary);
+  --sidebar: #fbf5e6;
+  --sidebar-foreground: #3d2c1e;
+  --sidebar-primary: #9a5b1e;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: var(--amber-soft);
-  --sidebar-accent-foreground: var(--ink);
-  --sidebar-border: var(--border);
-  --sidebar-ring: var(--primary);
+  --sidebar-accent: rgba(154, 91, 30, 0.14);
+  --sidebar-accent-foreground: #3d2c1e;
+  --sidebar-border: #ddd0b4;
+  --sidebar-ring: #9a5b1e;
 }
 
 /* Tokens base compartidos por todos los temas. */
 :root {
   --radius: 0.625rem;
   --destructive: oklch(0.577 0.245 27.325);
+  --font-greek: "SBL Greek", "Gentium Plus", "Times New Roman", Georgia, serif;
+  --font-hebrew: "Ezra SIL", "SBL Hebrew", "David Libre", "Times New Roman", serif;
 }
 
 html,
@@ -145,7 +155,105 @@ body {
 body {
   background: var(--bg);
   color: var(--ink);
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Tipografías exegéticas */
+.font-ancient-greek {
+  font-family: var(--font-greek);
+  font-feature-settings: "liga" 1, "dlig" 1;
+}
+
+.font-ancient-hebrew {
+  font-family: var(--font-hebrew);
+  font-feature-settings: "kern" 1;
+}
+
+/* Tamaños de fuente del lector */
+.reader-size-sm {
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+.reader-size-base {
+  font-size: 1rem;
+  line-height: 1.8;
+}
+.reader-size-lg {
+  font-size: 1.15rem;
+  line-height: 2;
+}
+.reader-size-xl {
+  font-size: 1.35rem;
+  line-height: 2.2;
+}
+
+/* Resaltadores de texto (IndexedDB) */
+.hl-yellow {
+  background-color: rgba(253, 224, 71, 0.28);
+  border-radius: 0.25rem;
+}
+.hl-green {
+  background-color: rgba(134, 239, 172, 0.28);
+  border-radius: 0.25rem;
+}
+.hl-blue {
+  background-color: rgba(147, 197, 253, 0.28);
+  border-radius: 0.25rem;
+}
+.hl-pink {
+  background-color: rgba(244, 114, 182, 0.28);
+  border-radius: 0.25rem;
+}
+
+/* Scrollbars sutiles */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--ink-muted);
+  opacity: 0.25;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--amber);
+}
+
+/* Estilos de editor TipTap */
+.tiptap-content p {
+  margin-bottom: 0.5rem;
+}
+.tiptap-content p:last-child {
+  margin-bottom: 0;
+}
+.tiptap-content ul {
+  list-style-type: disc;
+  padding-left: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+.tiptap-content ol {
+  list-style-type: decimal;
+  padding-left: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+.tiptap-content blockquote {
+  border-left: 3px solid var(--amber);
+  padding-left: 0.75rem;
+  font-style: italic;
+  margin-bottom: 0.5rem;
+  color: var(--ink-muted);
+}
+.tiptap-content code {
+  background: var(--muted);
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+  font-size: 0.85em;
+  font-family: var(--font-geist-mono), monospace;
 }
 
 @theme inline {
@@ -190,4 +298,5 @@ body {
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
 }
+
 
