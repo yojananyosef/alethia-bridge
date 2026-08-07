@@ -104,6 +104,13 @@ Monolito modular Next.js 16 (App Router) + TypeScript strict + RSC + Zustand + T
 - [x] Seed: `INSERT OR IGNORE` en diccionario (no pisa el diccionario real; solo añade las 40 curadas si faltan)
 - [x] `bun run import:lexicon`; empaquetado `dist-modules/lexicon-1.0.0.abmod` (1 MB); 13/13 tests; tsc+lint limpios
 
+## FASE 11 — Morfología real en `parsing_gramatical` ✅
+- [x] **Hebreo**: `Oshm.xml` (Open Scriptures Hebrew Morphology, 3.481 códigos) → 3.435 códigos reales de WLC con descripción (99,8%); 8 compuestos raros con fallback "sin descripción en OSHM"; categoría extraída del texto (Noun/Verb/Particle…)
+- [x] **Griego**: decodificador posicional morphgnt/Robinson (8 chars, spec del README de sblgnt + vocativo descubierto en los datos) → 457 códigos de SBLGNT con descripciones en español y categoría (Verbo/Participio/Infinitivo/Nombre/Adjetivo/Partícula)
+- [x] Ejemplos: `3AAI-S--` → "3ª persona aoristo activo indicativo singular"; `----NSF-` → "nominativo singular femenino"; `HVqp3ms` → "Hebrew: Verb qal perfect third person masculine singular"
+- [x] Las 20 entradas curadas del seed (STEPBible, V-AIA-3S) se conservan; los códigos generados se refrescan en cada import
+- [x] Empaquetado actualizado: `dist-modules/lexicon-1.0.0.abmod` (1,1 MB); 13/13 tests; tsc+lint limpios
+
 ## Próximos pasos (roadmap módulos)
 - [ ] Tipos de módulo `commentary`/`crossref`/`devotion` con renderizado dedicado
 - [ ] Registry remoto con checksums SHA-256 y actualizaciones por versión
