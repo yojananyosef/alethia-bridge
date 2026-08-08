@@ -101,11 +101,18 @@ export function PanelRightAnalysis() {
   }, [lexicon]);
 
   const refreshNotes = async () => {
-    setNotes(await notesForVerse(verseId));
+    const ns = await notesForVerse(verseId);
+    setNotes(ns);
   };
 
   useEffect(() => {
-    void refreshNotes();
+    let cancelled = false;
+    void notesForVerse(verseId).then((ns) => {
+      if (!cancelled) setNotes(ns);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [verseId]);
 
   const editor = useEditor({
@@ -118,6 +125,12 @@ export function PanelRightAnalysis() {
       },
     },
   });
+
+  // Al cambiar de versículo, vaciar el borrador del editor para no guardar
+  // contenido en la referencia equivocada.
+  useEffect(() => {
+    editor?.commands.setContent("");
+  }, [verseId, editor]);
 
   const saveNote = async () => {
     if (!editor) return;

@@ -125,6 +125,7 @@ function VerseView({
   layout,
   highlightColor,
   onOpenNotes,
+  onSelectVerse,
 }: {
   verseNo: number;
   bookId: string;
@@ -133,6 +134,7 @@ function VerseView({
   layout: "interleaved" | "columns";
   highlightColor: string | null;
   onOpenNotes: (verseId: string) => void;
+  onSelectVerse: (verseNo: number) => void;
 }) {
   const [hasNotes, setHasNotes] = useState(false);
   const [hlColor, setHlColor] = useState<string | null>(null);
@@ -171,6 +173,7 @@ function VerseView({
   );
 
   const handleVerseClick = async () => {
+    onSelectVerse(verseNo);
     if (highlightColor) {
       if (highlightColor === "clear" || hlColor === highlightColor) {
         setHlColor(null);
@@ -225,6 +228,7 @@ function VerseView({
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
+                      onSelectVerse(verseNo);
                       onOpenNotes(verseRef);
                     }}
                     className="text-[10px] bg-primary/10 text-primary px-1 rounded hover:bg-primary/20"
@@ -261,6 +265,7 @@ function VerseView({
           <button
             onClick={(e) => {
               e.stopPropagation();
+              onSelectVerse(verseNo);
               onOpenNotes(verseRef);
             }}
             className="text-[10px] text-primary hover:scale-110 transition-transform"
@@ -608,8 +613,15 @@ export function PanelCenterReader() {
             modules={data?.modules ?? []}
             layout={readerLayout}
             highlightColor={activeHighlightColor}
+            onSelectVerse={(verseNo) => {
+              // Seleccionar el versículo activo: el panel derecho (análisis/notas)
+              // y la navegación posterior apuntan a este versículo.
+              if (syncGroupA.verse !== verseNo) {
+                setSyncGroupA({ ...syncGroupA, verse: verseNo });
+              }
+            }}
             onOpenNotes={() => {
-              // Sincronizar el pasaje para enfocar la nota en el panel derecho
+              // Enfocar el pasaje del versículo en el panel derecho (notas)
               setActiveLexiconTerm(null);
             }}
           />
