@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import Database from "better-sqlite3";
-import { MODULES_DIR, TMP_MODULES_DIR, getWritableModulesDir, resolveModuleDbPath } from "../db/sqlite.ts";
+import { MODULES_DIR, TMP_MODULES_DIR, ensureModuleDbReady, getWritableModulesDir, resolveModuleDbPath } from "../db/sqlite.ts";
 import type { ModuleBook, ModuleInfo, ModuleManifest } from "../../types/module.ts";
 
 function getStateFile(): string {
@@ -131,11 +131,56 @@ function readModuleInfoUncached(moduleId: string): ModuleInfo | null {
   }
 }
 
-/** Escanea módulos instalados (en almacenamiento local y temporal). */
-export function listModules(): ModuleInfo[] {
-  const moduleMap = new Map<string, ModuleInfo>();
-  const dirs = [MODULES_DIR, TMP_MODULES_DIR];
+/** Helper para extraer los IDs de módulos instalados por el usuario desde la petición (header, cookie o query). */
+export function getInstalledIdsFromRequest(request?: Request): string[] | null {
+  if (!request) return null;
+  // 1. Header x-installed-modules
+  const header = request.headers.get("x-installed-modules");
+  if (header) {
+    const list = header.split(",").map((s) => s.trim()).filter(Boolean);
+    if (list.length > 0) return list;
+  }
+  // 2. Cookie alethia_installed
+  const cookieHeader = request.headers.get("cookie");
+  if (cookieHeader) {
+    const match = cookieHeader.match(/alethia_installed=([^;]+)/);
+    if (match && match[1]) {
+      try {
+        const val = decodeURIComponent(match[1]);
+        const list = val.split(",").map((s) => s.trim()).filter(Boolean);
+        if (list.length > 0) return list;
+      } catch {}
+    }
+  }
+  // 3. Query param ?installed=...
+  try {
+    const url = new URL(request.url);
+    const q = url.searchParams.get("installed");
+    if (q) {
+      const list = q.split(",").map((s) => s.trim()).filter(Boolean);
+      if (list.length > 0) return list;
+    }
+  } catch {}
+  return null;
+}
 
+/** Escanea módulos instalados (filtrando por los IDs instalados por el usuario si se proveen). */
+export function listModules(installedFilter?: string[] | null): ModuleInfo[] {
+  const moduleMap = new Map<string, ModuleInfo>();
+
+  // Si el cliente especifica los módulos que tiene instalados
+  if (installedFilter && installedFilter.length > 0) {
+    for (const id of installedFilter) {
+      const cleanId = id.trim();
+      if (!cleanId) continue;
+      ensureModuleDbReady(cleanId);
+      const info = readModuleInfo(cleanId);
+      if (info) moduleMap.set(cleanId, info);
+    }
+    return Array.from(moduleMap.values()).sort((a, b) => a.id.localeCompare(b.id));
+  }
+
+  const dirs = [MODULES_DIR, TMP_MODULES_DIR];
   for (const dir of dirs) {
     if (!existsSync(dir)) continue;
     try {

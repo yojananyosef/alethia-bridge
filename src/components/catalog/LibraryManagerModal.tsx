@@ -81,7 +81,7 @@ export function LibraryManagerModal({
   const [activeTab, setActiveTab] = useState<"all" | "bible" | "lexicon" | "commentary" | "updates" | "installed">("all");
   const [langFilter, setLangFilter] = useState<string>("ALL");
 
-  const { activeModules, toggleModule } = useExegesisStore();
+  const { activeModules, toggleModule, addInstalledModule, removeInstalledModule } = useExegesisStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadCatalog = useCallback(async (forceRefresh = false) => {
@@ -131,6 +131,11 @@ export function LibraryManagerModal({
       const body = (await res.json()) as InstallRemoteResponse;
       if (!res.ok || !body.ok) {
         throw new Error(body.error ?? `HTTP ${res.status}`);
+      }
+
+      addInstalledModule(moduleItem.id);
+      for (const depId of body.installedDependencies ?? []) {
+        addInstalledModule(depId);
       }
 
       if (moduleItem.type === "bible" && !activeModules.includes(moduleItem.id)) {
@@ -189,6 +194,7 @@ export function LibraryManagerModal({
         method: "DELETE",
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      removeInstalledModule(moduleItem.id);
       if (activeModules.includes(moduleItem.id)) {
         toggleModule(moduleItem.id);
       }

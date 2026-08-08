@@ -1,4 +1,4 @@
-import { listModules } from "../../../src/lib/modules/registry.ts";
+import { getInstalledIdsFromRequest, listModules } from "../../../src/lib/modules/registry.ts";
 import { installModuleZip } from "../../../src/lib/modules/package.ts";
 import type { ModuleListResponse } from "../../../src/types/module.ts";
 
@@ -7,11 +7,12 @@ export const dynamic = "force-dynamic";
 const MAX_UPLOAD_BYTES = 512 * 1024 * 1024;
 
 /** GET /api/modules → lista de módulos instalados con manifest + canon. */
-export async function GET(): Promise<Response> {
+export async function GET(request: Request): Promise<Response> {
   try {
     const t0 = performance.now();
+    const installedFilter = getInstalledIdsFromRequest(request);
     const body: ModuleListResponse = {
-      modules: listModules(),
+      modules: listModules(installedFilter),
       durationMs: performance.now() - t0,
     };
     return Response.json(body);

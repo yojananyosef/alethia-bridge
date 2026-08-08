@@ -16,7 +16,7 @@ function moduleCtx(id: string) {
 }
 
 async function listModules(): Promise<ModuleInfo[]> {
-  const res = await GET();
+  const res = await GET(new Request("http://localhost/api/modules"));
   assert.equal(res.status, 200);
   const body = (await res.json()) as ModuleListResponse;
   return body.modules;

@@ -17,6 +17,8 @@ interface ExegesisState {
   activeTheme: ThemeId;
   /** Módulos activos en el lector (orden = orden de visualización). */
   activeModules: string[];
+  /** Módulos instalados por el usuario persistidos en el cliente. */
+  installedModules: string[];
   /** Layout del lector: "interleaved" (interlineal en línea) o "columns" (biblia paralela por columnas). */
   readerLayout: ReaderLayout;
   /** Tamaño de tipografía del lector bíblico. */
@@ -37,6 +39,8 @@ interface ExegesisActions {
   setSyncGroupA: (ref: SyncGroupReference) => void;
   setActiveTheme: (theme: ThemeId) => void;
   toggleModule: (moduleId: string) => void;
+  addInstalledModule: (moduleId: string) => void;
+  removeInstalledModule: (moduleId: string) => void;
   setReaderLayout: (layout: ReaderLayout) => void;
   setFontSize: (size: ReaderFontSize) => void;
   setShowStrongs: (show: boolean) => void;
@@ -49,12 +53,19 @@ interface ExegesisActions {
 
 export type ExegesisStore = ExegesisState & ExegesisActions;
 
+function syncInstalledCookie(modules: string[]) {
+  if (typeof document !== "undefined") {
+    document.cookie = `alethia_installed=${encodeURIComponent(modules.join(","))}; path=/; max-age=31536000; SameSite=Lax`;
+  }
+}
+
 /** Lee de forma síncrona en cliente el estado guardado para evitar CUALQUIER flash visual. */
 function getInitialPersistedState() {
   const fallback = {
     syncGroupA: { book: "Gen", chapter: 1, verse: 1 },
     activeTheme: "academic-paper" as ThemeId,
-    activeModules: ["RV1909", "WLC"],
+    activeModules: ["RV1909"],
+    installedModules: ["RV1909", "lexicon"],
     readerLayout: "interleaved" as ReaderLayout,
     fontSize: "base" as ReaderFontSize,
     showStrongs: true,
@@ -69,14 +80,18 @@ function getInitialPersistedState() {
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed?.state?.syncGroupA?.book) {
-        return {
+        const state = {
           ...fallback,
           ...parsed.state,
+          installedModules: parsed.state.installedModules ?? fallback.installedModules,
         };
+        syncInstalledCookie(state.installedModules);
+        return state;
       }
     }
   } catch {}
 
+  syncInstalledCookie(fallback.installedModules);
   return fallback;
 }
 
@@ -91,6 +106,7 @@ export const useExegesisStore = create<ExegesisStore>()(
       syncGroupA: initial.syncGroupA,
       activeTheme: initial.activeTheme,
       activeModules: initial.activeModules,
+      installedModules: initial.installedModules,
       readerLayout: initial.readerLayout,
       fontSize: initial.fontSize,
       showStrongs: initial.showStrongs,
@@ -119,17 +135,36 @@ export const useExegesisStore = create<ExegesisStore>()(
               : [...state.activeModules, moduleId],
           };
         }),
+      addInstalledModule: (moduleId) =>
+        set((state) => {
+          const list = state.installedModules.includes(moduleId)
+            ? state.installedModules
+            : [...state.installedModules, moduleId];
+          syncInstalledCookie(list);
+          return { installedModules: list };
+        }),
+      removeInstalledModule: (moduleId) =>
+        set((state) => {
+          const list = state.installedModules.filter((m) => m !== moduleId);
+          const active = state.activeModules.filter((m) => m !== moduleId);
+          syncInstalledCookie(list);
+          return { installedModules: list, activeModules: active };
+        }),
     }),
     {
       name: "alethia-exegesis-store",
       storage: createJSONStorage(() => localStorage),
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated(true);
+        if (state?.installedModules) {
+          syncInstalledCookie(state.installedModules);
+        }
       },
       partialize: (state) => ({
         syncGroupA: state.syncGroupA,
         activeTheme: state.activeTheme,
         activeModules: state.activeModules,
+        installedModules: state.installedModules,
         readerLayout: state.readerLayout,
         fontSize: state.fontSize,
         showStrongs: state.showStrongs,

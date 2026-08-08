@@ -111,10 +111,13 @@ export async function fetchRemoteCatalog(forceRefresh = false): Promise<RemoteCa
  * - installed: instalado y en versión igual o superior a la del catálogo.
  * - update_available: instalado pero con versión en catálogo superior a la local.
  */
-export async function getCatalogWithInstallStatus(forceRefresh = false): Promise<CatalogResponse> {
+export async function getCatalogWithInstallStatus(
+  forceRefresh = false,
+  installedFilter?: string[] | null,
+): Promise<CatalogResponse> {
   const t0 = performance.now();
   const remote = await fetchRemoteCatalog(forceRefresh);
-  const localModules = listModules();
+  const localModules = listModules(installedFilter);
   const localMap = new Map(localModules.map((m) => [m.id, m]));
 
   const catalogItems: CatalogItem[] = [];
