@@ -35,6 +35,7 @@ import {
 } from "../ui/dialog";
 import type { CatalogItem, CatalogResponse, InstallRemoteResponse } from "../../types/catalog";
 import { cn } from "../../lib/utils";
+import { useExegesisStore } from "../../store/useExegesisStore";
 
 interface LibraryManagerModalProps {
   open: boolean;
@@ -80,6 +81,7 @@ export function LibraryManagerModal({
   const [activeTab, setActiveTab] = useState<"all" | "bible" | "lexicon" | "commentary" | "updates" | "installed">("all");
   const [langFilter, setLangFilter] = useState<string>("ALL");
 
+  const { activeModules, toggleModule } = useExegesisStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadCatalog = useCallback(async (forceRefresh = false) => {
@@ -131,6 +133,10 @@ export function LibraryManagerModal({
         throw new Error(body.error ?? `HTTP ${res.status}`);
       }
 
+      if (moduleItem.type === "bible" && !activeModules.includes(moduleItem.id)) {
+        toggleModule(moduleItem.id);
+      }
+
       setNotification({
         type: "success",
         text: `¡Módulo "${moduleItem.name}" (${moduleItem.id}) instalado y verificado con éxito!`,
@@ -157,6 +163,13 @@ export function LibraryManagerModal({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ enabled: nextStatus }),
       });
+      if (moduleItem.type === "bible") {
+        if (nextStatus && !activeModules.includes(moduleItem.id)) {
+          toggleModule(moduleItem.id);
+        } else if (!nextStatus && activeModules.includes(moduleItem.id)) {
+          toggleModule(moduleItem.id);
+        }
+      }
       await loadCatalog(true);
       onModuleChanged?.();
     } catch (e) {
@@ -176,6 +189,9 @@ export function LibraryManagerModal({
         method: "DELETE",
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (activeModules.includes(moduleItem.id)) {
+        toggleModule(moduleItem.id);
+      }
       setNotification({
         type: "success",
         text: `Módulo "${moduleItem.id}" desinstalado correctamente.`,

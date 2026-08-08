@@ -131,17 +131,24 @@ function readModuleInfoUncached(moduleId: string): ModuleInfo | null {
   }
 }
 
-/** Escanea módulos instalados (en bundle y en almacenamiento temporal). */
+/** Escanea módulos instalados (en bundle, en dist-modules y en almacenamiento temporal). */
 export function listModules(): ModuleInfo[] {
   const moduleMap = new Map<string, ModuleInfo>();
-  const dirs = [MODULES_DIR, TMP_MODULES_DIR];
+  const distDir = path.join(process.cwd(), "dist-modules");
+  const dirs = [MODULES_DIR, TMP_MODULES_DIR, distDir];
 
   for (const dir of dirs) {
     if (!existsSync(dir)) continue;
     try {
       for (const file of readdirSync(dir)) {
-        if (!file.endsWith(".db") || file.startsWith(".")) continue;
-        const moduleId = file.replace(/\.db$/, "");
+        if (file.startsWith(".")) continue;
+        let moduleId = "";
+        if (file.endsWith(".db")) {
+          moduleId = file.replace(/\.db$/, "");
+        } else if (file.endsWith(".abmod")) {
+          moduleId = file.replace(/\.abmod$/, "").split("-")[0];
+        }
+        if (!moduleId || moduleMap.has(moduleId)) continue;
         const info = readModuleInfo(moduleId);
         if (info) moduleMap.set(moduleId, info);
       }

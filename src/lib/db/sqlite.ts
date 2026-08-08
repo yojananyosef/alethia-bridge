@@ -1,6 +1,7 @@
-import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import Database from "better-sqlite3";
+import { unzipSync } from "fflate";
 
 export const MODULES_DIR = path.join(process.cwd(), "data", "modules");
 export const TMP_MODULES_DIR = path.join(process.env.TMPDIR || "/tmp", "alethia-modules");
@@ -23,8 +24,32 @@ export function getWritableModulesDir(): string {
 export function resolveModuleDbPath(moduleId: string): string {
   const tmp = path.join(TMP_MODULES_DIR, `${moduleId}.db`);
   if (existsSync(tmp)) return tmp;
+
   const local = path.join(MODULES_DIR, `${moduleId}.db`);
   if (existsSync(local)) return local;
+
+  // Auto-desempaquetado desde dist-modules para entornos serverless (Vercel)
+  const distDir = path.join(process.cwd(), "dist-modules");
+  if (existsSync(distDir)) {
+    try {
+      const candidates = [
+        path.join(distDir, `${moduleId}-1.0.0.abmod`),
+        path.join(distDir, `${moduleId}.abmod`),
+      ];
+      for (const cand of candidates) {
+        if (existsSync(cand)) {
+          const zip = unzipSync(new Uint8Array(readFileSync(cand)));
+          const dbBytes = zip["module.db"];
+          if (dbBytes) {
+            mkdirSync(TMP_MODULES_DIR, { recursive: true });
+            writeFileSync(tmp, dbBytes);
+            return tmp;
+          }
+        }
+      }
+    } catch {}
+  }
+
   return tmp;
 }
 
