@@ -77,7 +77,10 @@ export async function fetchRemoteCatalog(forceRefresh = false): Promise<RemoteCa
     return inMemoryCache.catalog;
   }
 
-  const remoteUrl = process.env.ALETHIA_CATALOG_URL;
+  const remoteUrl =
+    process.env.ALETHIA_CATALOG_URL ||
+    "https://raw.githubusercontent.com/yojananyosef/alethia-modules/main/catalog.json";
+
   if (remoteUrl && /^https?:\/\//.test(remoteUrl)) {
     try {
       const res = await fetch(remoteUrl, {

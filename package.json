@@ -7,14 +7,6 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "import": "node scripts/import-osis.ts",
-    "import:lexicon": "node scripts/import-lexicon.ts",
-    "import:usfm": "node scripts/import-usfm.ts",
-    "names": "node scripts/import-tipnr.ts",
-    "import:strong-es": "node scripts/import-strong-es.ts",
-    "import:commentary": "node scripts/import-commentary.ts",
-    "package": "node scripts/package-module.ts",
-    "glosses": "node scripts/derive-glosses.ts",
     "test": "node --test \"tests/*.test.ts\""
   },
   "dependencies": {
