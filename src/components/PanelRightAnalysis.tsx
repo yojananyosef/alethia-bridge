@@ -26,7 +26,7 @@ import { Skeleton } from "../components/ui/skeleton";
 import { useExegesisStore } from "../store/useExegesisStore";
 import { addNote, deleteNote, notesForVerse } from "../lib/db/dexie-user-db";
 import type { UserNote } from "../lib/db/dexie-user-db";
-import type { LexiconEntry, MorphologyAnalysis } from "../types/bible";
+import type { LexiconEntry, MorphologyAnalysis, ProperName } from "../types/bible";
 import { cn } from "../lib/utils";
 
 async function fetchJson<T>(url: string): Promise<T> {
@@ -46,6 +46,7 @@ export function PanelRightAnalysis() {
 
   const [lexicon, setLexicon] = useState<LexiconEntry | null>(null);
   const [morph, setMorph] = useState<MorphologyAnalysis | null>(null);
+  const [nombres, setNombres] = useState<ProperName[]>([]);
   const [notes, setNotes] = useState<UserNote[]>([]);
   const [copiedLexicon, setCopiedLexicon] = useState(false);
 
@@ -55,6 +56,7 @@ export function PanelRightAnalysis() {
       if (!cancelled) {
         setLexicon(null);
         setMorph(null);
+        setNombres([]);
       }
     });
     if (!activeLexiconTerm) return;
@@ -67,10 +69,21 @@ export function PanelRightAnalysis() {
       .catch(() => {
         if (!cancelled) setLexicon(null);
       });
+    fetchJson<{ nombres: ProperName[] }>(
+      `/api/bible/read?name=${encodeURIComponent(activeLexiconTerm)}&book=${encodeURIComponent(
+        syncGroupA.book,
+      )}`,
+    )
+      .then((b) => {
+        if (!cancelled) setNombres(b.nombres);
+      })
+      .catch(() => {
+        if (!cancelled) setNombres([]);
+      });
     return () => {
       cancelled = true;
     };
-  }, [activeLexiconTerm]);
+  }, [activeLexiconTerm, syncGroupA.book]);
 
   useEffect(() => {
     if (!lexicon) return;
@@ -231,6 +244,57 @@ export function PanelRightAnalysis() {
                 <Badge variant="secondary" className="text-[10px]">
                   Dominio: {lexicon.semanticDomain}
                 </Badge>
+              )}
+
+              {/* Nombre propio (TIPNR) */}
+              {nombres.length > 0 && (
+                <div className="space-y-2 rounded-lg border border-primary/40 bg-primary/5 p-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-primary">
+                      Nombre propio
+                    </span>
+                    <span className="font-mono text-[10px] text-muted-foreground">
+                      {nombres.length > 1 ? `${nombres.length} referidos` : "TIPNR"}
+                    </span>
+                  </div>
+                  {nombres.slice(0, 2).map((n, i) => (
+                    <div key={i} className="space-y-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm font-bold text-foreground">{n.nombre}</span>
+                        <Badge variant="secondary" className="text-[9px] font-mono">
+                          {n.tipo}
+                        </Badge>
+                      </div>
+                      {n.descripcion && (
+                        <p className="text-[11px] text-foreground leading-relaxed">{n.descripcion}</p>
+                      )}
+                      <div className="flex flex-wrap gap-1 text-[10px] text-muted-foreground">
+                        {n.padres && <span>Padres: {n.padres}</span>}
+                        {n.hermanos && <span>Hermanos: {n.hermanos}</span>}
+                        {n.conyuges && <span>Cónyuges: {n.conyuges}</span>}
+                        {n.hijos && <span>Hijos: {n.hijos}</span>}
+                        {n.tribu && <span>Tribu: {n.tribu}</span>}
+                      </div>
+                      {n.geoLat !== null && n.geoLng !== null && (
+                        <a
+                          href={`https://www.google.com/maps/?q=${n.geoLat},${n.geoLng}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 text-[10px] font-semibold text-primary underline underline-offset-2"
+                        >
+                          Ver en el mapa
+                        </a>
+                      )}
+                    </div>
+                  ))}
+                  {nombres[0]?.referencias && (
+                    <p className="text-[10px] text-muted-foreground leading-relaxed border-t border-primary/20 pt-1.5">
+                      <span className="font-semibold">Refs: </span>
+                      {nombres[0].referencias.slice(0, 220)}
+                      {nombres[0].referencias.length > 220 ? "…" : ""}
+                    </p>
+                  )}
+                </div>
               )}
 
               {/* Desglose Morfológico */}

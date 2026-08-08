@@ -58,6 +58,26 @@ export interface LexiconEntry {
   language: "HEBREW" | "GREEK";
 }
 
+/** Nombre propio (TIPNR de STEPBible, CC BY 4.0). */
+export interface ProperName {
+  nombre: string;
+  tipo: string;
+  categoria: "persona" | "lugar" | "otro";
+  descripcion: string | null;
+  padres: string | null;
+  hermanos: string | null;
+  conyuges: string | null;
+  hijos: string | null;
+  tribu: string | null;
+  referencias: string | null;
+  formas: string | null;
+  /** Libros (id interno) donde aparece el nombre. */
+  libros: string[];
+  geoLat: number | null;
+  geoLng: number | null;
+  openbible: string | null;
+}
+
 export interface SearchResult {
   moduleId: BibleModuleId;
   book: string;

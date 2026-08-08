@@ -1,10 +1,18 @@
-import { getLexiconEntry, getMorphology, readChapter } from "../../../../src/lib/bible/service.ts";
+import { getLexiconEntry, getMorphology, getProperNames, readChapter } from "../../../../src/lib/bible/service.ts";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request): Promise<Response> {
   try {
     const url = new URL(request.url);
+    const name = url.searchParams.get("name");
+    if (name) {
+      const nombres = getProperNames(
+        name.toUpperCase(),
+        url.searchParams.get("book") ?? undefined,
+      );
+      return Response.json({ nombres });
+    }
     const lexicon = url.searchParams.get("lexicon");
     if (lexicon) {
       const entry = getLexiconEntry(lexicon.toUpperCase());

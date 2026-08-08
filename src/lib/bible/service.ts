@@ -6,6 +6,7 @@ import type {
   InterlinearModule,
   LexiconEntry,
   MorphologyAnalysis,
+  ProperName,
   ReadResponse,
   SearchResponse,
   SearchResult,
@@ -325,4 +326,65 @@ export function getMorphology(code: string): MorphologyAnalysis | null {
     description: row.descripcion_espanol,
     category: row.categoria_gramatical,
   };
+}
+
+interface ProperNameRow {
+  strong_id: string;
+  nombre: string;
+  tipo: string;
+  categoria: string;
+  descripcion: string | null;
+  padres: string | null;
+  hermanos: string | null;
+  conyuges: string | null;
+  hijos: string | null;
+  tribu: string | null;
+  referencias: string | null;
+  formas: string | null;
+  libros: string;
+  geo_lat: number | null;
+  geo_lng: number | null;
+  openbible: string | null;
+}
+
+/** Nombres propios que usan un Strong, ordenados por relevancia al libro actual
+ *  (los que lo mencionan primero) y por la primera referencia (más corta antes). */
+export function getProperNames(strongId: string, book?: string): ProperName[] {
+  const db = getLexiconDb();
+  let hasTable = false;
+  try {
+    hasTable = Boolean(
+      db.prepare(`SELECT 1 FROM sqlite_master WHERE type='table' AND name='nombres_propios'`).get(),
+    );
+  } catch {
+    hasTable = false;
+  }
+  if (!hasTable) return [];
+
+  const rows = db
+    .prepare(`SELECT * FROM nombres_propios WHERE strong_id = ?`)
+    .all(strongId) as ProperNameRow[];
+  const bookMatch = book
+    ? (r: ProperNameRow): boolean => r.libros.split(",").includes(book)
+    : (): boolean => true;
+  const ordered = [...rows].sort((a, b) => Number(bookMatch(b)) - Number(bookMatch(a)));
+  return ordered.map((r) => ({
+    nombre: r.nombre,
+    tipo: r.tipo,
+    categoria: (r.categoria === "persona" || r.categoria === "lugar" || r.categoria === "otro"
+      ? r.categoria
+      : "otro") as ProperName["categoria"],
+    descripcion: r.descripcion,
+    padres: r.padres,
+    hermanos: r.hermanos,
+    conyuges: r.conyuges,
+    hijos: r.hijos,
+    tribu: r.tribu,
+    referencias: r.referencias,
+    formas: r.formas,
+    libros: r.libros ? r.libros.split(",") : [],
+    geoLat: r.geo_lat,
+    geoLng: r.geo_lng,
+    openbible: r.openbible,
+  }));
 }
