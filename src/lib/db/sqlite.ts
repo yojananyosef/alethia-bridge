@@ -1,8 +1,17 @@
-import { mkdirSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import Database from "better-sqlite3";
 
 export const MODULES_DIR = path.join(process.cwd(), "data", "modules");
+export const TMP_MODULES_DIR = path.join(process.env.TMPDIR || "/tmp", "alethia-modules");
+
+export function resolveModuleDbPath(moduleId: string): string {
+  const local = path.join(MODULES_DIR, `${moduleId}.db`);
+  if (existsSync(local)) return local;
+  const tmp = path.join(TMP_MODULES_DIR, `${moduleId}.db`);
+  if (existsSync(tmp)) return tmp;
+  return local;
+}
 
 export const SCHEMA_VERSICULOS = `
 CREATE TABLE IF NOT EXISTS versiculos (
@@ -152,20 +161,34 @@ export function normalizeText(text: string): string {
 
 const moduleCache = new Map<string, Database.Database>();
 
-function openDb(file: string): Database.Database {
-  mkdirSync(path.dirname(file), { recursive: true });
-  const db = new Database(file);
-  db.pragma("journal_mode = WAL");
-  db.pragma("synchronous = NORMAL");
-  db.pragma("busy_timeout = 5000");
-  db.pragma("foreign_keys = ON");
+function openDb(file: string, readonly = false): Database.Database {
+  try {
+    mkdirSync(path.dirname(file), { recursive: true });
+  } catch {}
+
+  let db: Database.Database;
+  try {
+    db = new Database(file, { readonly });
+    if (!readonly) {
+      try {
+        db.pragma("journal_mode = WAL");
+        db.pragma("synchronous = NORMAL");
+        db.pragma("busy_timeout = 5000");
+        db.pragma("foreign_keys = ON");
+      } catch {
+        // En entornos serverless donde el FS es read-only, continuar en modo lectura
+      }
+    }
+  } catch {
+    db = new Database(file, { readonly: true });
+  }
   return db;
 }
 
 export function getModuleDb(moduleId: string): Database.Database {
   let db = moduleCache.get(moduleId);
   if (!db) {
-    db = openDb(path.join(MODULES_DIR, `${moduleId}.db`));
+    db = openDb(resolveModuleDbPath(moduleId));
     moduleCache.set(moduleId, db);
   }
   return db;
