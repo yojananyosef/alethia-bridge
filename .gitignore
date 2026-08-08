@@ -44,3 +44,6 @@ next-env.d.ts
 data/modules/*.db
 data/modules/*.db-shm
 data/modules/*.db-wal
+
+# import caches (scraped sources, regenerable)
+.cache-strong-es.json
