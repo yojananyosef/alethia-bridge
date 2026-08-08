@@ -1,4 +1,11 @@
-import { getLexiconEntry, getMorphology, getProperNames, readChapter, readCommentary } from "../../../../src/lib/bible/service.ts";
+import {
+  getLexiconEntry,
+  getMorphology,
+  getProperNames,
+  readChapter,
+  readCommentary,
+  readCrossReferences,
+} from "../../../../src/lib/bible/service.ts";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +19,15 @@ export async function GET(request: Request): Promise<Response> {
         url.searchParams.get("book") ?? undefined,
       );
       return Response.json({ nombres });
+    }
+    const crossref = url.searchParams.get("crossref");
+    if (crossref) {
+      const data = readCrossReferences(
+        url.searchParams.get("book") ?? "",
+        url.searchParams.get("chapter") ?? "",
+        url.searchParams.get("verse"),
+      );
+      return Response.json(data);
     }
     const commentary = url.searchParams.get("commentary");
     if (commentary) {

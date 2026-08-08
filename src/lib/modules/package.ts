@@ -73,6 +73,7 @@ export async function packageModuleToZip(moduleId: string): Promise<Uint8Array> 
  */
 export function installModuleZip(
   zipBytes: Uint8Array,
+  options: { allowOverwrite?: boolean } = {},
 ): { ok: true; moduleId: string } | { ok: false; error: string } {
   let files;
   try {
@@ -94,7 +95,7 @@ export function installModuleZip(
     return { ok: false, error: "manifest.json inválido" };
   }
 
-  const manifestError = validateManifest(manifest);
+  const manifestError = validateManifest(manifest, options.allowOverwrite ?? false);
   if (manifestError) return { ok: false, error: manifestError };
   const depError = validateDependencies(manifest);
   if (depError) return { ok: false, error: depError };

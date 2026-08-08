@@ -203,4 +203,16 @@ describe("API /api/bible/read con comentario", () => {
       }
     }
   });
+
+  test("devuelve referencias cruzadas TSK para Juan 1:1", async () => {
+    const res = await readGET(
+      new Request("http://localhost/api/bible/read?crossref=1&book=John&chapter=1&verse=1"),
+    );
+    assert.equal(res.status, 200);
+    const body = (await res.json()) as { crossref: Array<{ moduleId: string; references: Array<{ targetReference: string }> }> };
+    assert.ok(body.crossref.length > 0, "debe incluir módulo TSK");
+    const tsk = body.crossref.find((m) => m.moduleId === "TSK");
+    assert.ok(tsk, "módulo TSK presente");
+    assert.ok(tsk.references.some((r) => r.targetReference.startsWith("Gen 1")), "debe referenciar Génesis 1");
+  });
 });

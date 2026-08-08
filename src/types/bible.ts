@@ -57,6 +57,42 @@ export interface CommentaryResponse {
   durationMs: number;
 }
 
+export interface CrossReference {
+  id: number;
+  sourceBook: string;
+  sourceChapter: number;
+  sourceVerse: number;
+  targetBook: string;
+  targetChapter: number;
+  targetVerseStart: number;
+  targetVerseEnd: number | null;
+  targetReference: string;
+  votes: number;
+  note: string | null;
+}
+
+export interface CrossRefModule {
+  moduleId: BibleModuleId;
+  name: string;
+  references: CrossReference[];
+}
+
+export interface CrossRefResponse {
+  crossref: CrossRefModule[];
+  durationMs: number;
+}
+
+export interface DevotionalEntry {
+  id: number;
+  month: number;
+  day: number;
+  moment: string;
+  title: string;
+  keyPassage: string;
+  text: string;
+  prayer: string | null;
+}
+
 export interface MorphologyAnalysis {
   code: string;
   description: string;

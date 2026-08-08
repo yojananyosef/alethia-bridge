@@ -1,6 +1,6 @@
 "use client";
 
-import { BookMarked, PanelRight, Sparkles } from "lucide-react";
+import { PanelRight } from "lucide-react";
 import { Sidebar, SidebarProvider, SidebarInset, SidebarTrigger } from "../components/ui/sidebar";
 import { Button } from "../components/ui/button";
 import { Omnibar } from "./Omnibar";

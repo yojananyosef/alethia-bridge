@@ -6,9 +6,13 @@ import {
   BookMarked,
   Check,
   Code,
+  Compass,
   Copy,
+  ExternalLink,
   FileEdit,
+  Globe2,
   Italic,
+  Layers,
   List,
   ListOrdered,
   MousePointerClick,
@@ -21,12 +25,13 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
-import { SidebarContent, SidebarHeader, SidebarTrigger } from "../components/ui/sidebar";
+import { SidebarContent, SidebarHeader } from "../components/ui/sidebar";
 import { Skeleton } from "../components/ui/skeleton";
+import { LibraryManagerModal } from "./catalog/LibraryManagerModal";
 import { useExegesisStore } from "../store/useExegesisStore";
 import { addNote, deleteNote, notesForVerse } from "../lib/db/dexie-user-db";
 import type { UserNote } from "../lib/db/dexie-user-db";
-import type { CommentaryModule, LexiconEntry, MorphologyAnalysis, ProperName } from "../types/bible";
+import type { CommentaryModule, CrossRefModule, LexiconEntry, MorphologyAnalysis, ProperName } from "../types/bible";
 import { cn } from "../lib/utils";
 
 async function fetchJson<T>(url: string): Promise<T> {
@@ -39,6 +44,7 @@ export function PanelRightAnalysis() {
   const activeLexiconTerm = useExegesisStore((s) => s.activeLexiconTerm);
   const setActiveLexiconTerm = useExegesisStore((s) => s.setActiveLexiconTerm);
   const syncGroupA = useExegesisStore((s) => s.syncGroupA);
+  const setSyncGroupA = useExegesisStore((s) => s.setSyncGroupA);
   const verseId = useMemo(
     () => `${syncGroupA.book} ${syncGroupA.chapter}:${syncGroupA.verse}`,
     [syncGroupA],
@@ -49,7 +55,11 @@ export function PanelRightAnalysis() {
   const [nombres, setNombres] = useState<ProperName[]>([]);
   const [notes, setNotes] = useState<UserNote[]>([]);
   const [commentary, setCommentary] = useState<CommentaryModule[]>([]);
+  const [crossRefs, setCrossRefs] = useState<CrossRefModule[]>([]);
   const [copiedLexicon, setCopiedLexicon] = useState(false);
+  const [catalogModalOpen, setCatalogModalOpen] = useState(false);
+  const [commentaryMode, setCommentaryMode] = useState<"verse" | "chapter">("verse");
+  const [copiedNoteId, setCopiedNoteId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -135,6 +145,26 @@ export function PanelRightAnalysis() {
       cancelled = true;
     };
   }, [syncGroupA.book, syncGroupA.chapter]);
+
+  // Referencias cruzadas del versículo activo (módulos type=crossref, p. ej. TSK)
+  useEffect(() => {
+    let cancelled = false;
+    void Promise.resolve().then(() => {
+      if (!cancelled) setCrossRefs([]);
+    });
+    fetchJson<{ crossref: CrossRefModule[] }>(
+      `/api/bible/read?crossref=1&book=${encodeURIComponent(syncGroupA.book)}&chapter=${syncGroupA.chapter}&verse=${syncGroupA.verse}`,
+    )
+      .then((b) => {
+        if (!cancelled) setCrossRefs(b.crossref ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setCrossRefs([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [syncGroupA.book, syncGroupA.chapter, syncGroupA.verse]);
 
   const editor = useEditor({
     extensions: [StarterKit],
@@ -367,35 +397,155 @@ export function PanelRightAnalysis() {
         )}
 
         {/* Comentario bíblico (módulos type=commentary, p. ej. Torres Amat) */}
-        {commentary.map((c) => {
-          const note = c.notes.find((n) => n.verse === syncGroupA.verse);
-          return (
-            <div key={c.moduleId} className="rounded-xl border border-border bg-card p-3 shadow-xs space-y-2">
+        {commentary.length > 0 ? (
+          commentary.map((c) => {
+            const activeNote = c.notes.find((n) => n.verse === syncGroupA.verse);
+            const notesToRender = commentaryMode === "verse" ? (activeNote ? [activeNote] : []) : c.notes;
+
+            return (
+              <div key={c.moduleId} className="rounded-xl border border-border bg-card p-3 shadow-xs space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <BookMarked className="size-3.5 text-primary" />
+                    <span className="text-xs font-bold text-foreground">{c.name}</span>
+                  </div>
+
+                  {/* Toggle entre versículo activo y capítulo completo */}
+                  <div className="flex items-center gap-1 bg-muted/40 p-0.5 rounded text-[9px] font-mono">
+                    <button
+                      onClick={() => setCommentaryMode("verse")}
+                      className={cn(
+                        "px-1.5 py-0.5 rounded",
+                        commentaryMode === "verse" ? "bg-card text-foreground font-bold shadow-2xs" : "text-muted-foreground",
+                      )}
+                    >
+                      v. {syncGroupA.verse}
+                    </button>
+                    <button
+                      onClick={() => setCommentaryMode("chapter")}
+                      className={cn(
+                        "px-1.5 py-0.5 rounded",
+                        commentaryMode === "chapter" ? "bg-card text-foreground font-bold shadow-2xs" : "text-muted-foreground",
+                      )}
+                    >
+                      Cap. ({c.notes.length})
+                    </button>
+                  </div>
+                </div>
+
+                {notesToRender.length > 0 ? (
+                  <div className="space-y-3">
+                    {notesToRender.map((note) => (
+                      <div
+                        key={note.verse}
+                        className={cn(
+                          "space-y-1.5 rounded-lg transition-colors",
+                          commentaryMode === "chapter" && note.verse === syncGroupA.verse && "bg-primary/5 p-2 border border-primary/20",
+                        )}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono text-[10px] font-bold text-primary">
+                            {syncGroupA.book} {syncGroupA.chapter}:{note.verse}
+                          </span>
+                          <button
+                            onClick={async () => {
+                              await navigator.clipboard.writeText(note.text);
+                              setCopiedNoteId(`${c.moduleId}-${note.verse}`);
+                              setTimeout(() => setCopiedNoteId(null), 2000);
+                            }}
+                            className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-1"
+                            title="Copiar nota del comentario"
+                          >
+                            {copiedNoteId === `${c.moduleId}-${note.verse}` ? (
+                              <Check className="size-2.5 text-primary" />
+                            ) : (
+                              <Copy className="size-2.5" />
+                            )}
+                          </button>
+                        </div>
+                        {note.text.split(/\n\s*\n/).map((p, i) => (
+                          <p key={i} className="text-[11px] leading-relaxed text-foreground">
+                            {p}
+                          </p>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-muted-foreground">
+                    Sin nota de comentario para el versículo {syncGroupA.verse}.
+                  </p>
+                )}
+              </div>
+            );
+          })
+        ) : (
+          <div className="rounded-xl border border-dashed border-border/80 bg-muted/10 p-3.5 space-y-2 text-center">
+            <Layers className="size-5 text-primary/60 mx-auto" />
+            <h4 className="text-xs font-bold text-foreground">Comentarios & Recursos Exegéticos</h4>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              Instala comentarios versículo a versículo como Torres Amat (1825) desde el Catálogo Remoto.
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCatalogModalOpen(true)}
+              className="h-7 text-xs font-semibold text-primary border-primary/30 hover:bg-primary/10 gap-1.5"
+            >
+              <Globe2 className="size-3" />
+              <span>Explorar Catálogo</span>
+            </Button>
+          </div>
+        )}
+
+        {/* Referencias Cruzadas Temáticas (módulos type=crossref, p. ej. TSK) */}
+        {crossRefs.length > 0 ? (
+          crossRefs.map((cr) => (
+            <div key={cr.moduleId} className="rounded-xl border border-border bg-card p-3 shadow-xs space-y-2.5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
-                  <BookMarked className="size-3.5 text-primary" />
-                  <span className="text-xs font-bold text-foreground">{c.name}</span>
+                  <Compass className="size-3.5 text-primary" />
+                  <span className="text-xs font-bold text-foreground">{cr.name}</span>
                 </div>
                 <span className="font-mono text-[10px] text-muted-foreground">
                   {syncGroupA.book} {syncGroupA.chapter}:{syncGroupA.verse}
                 </span>
               </div>
-              {note ? (
-                <div className="space-y-2">
-                  {note.text.split(/\n\s*\n/).map((p, i) => (
-                    <p key={i} className="text-[11px] leading-relaxed text-foreground">
-                      {p}
-                    </p>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-[11px] text-muted-foreground">
-                  Sin nota de comentario para este versículo.
-                </p>
-              )}
+
+              <div className="space-y-1.5">
+                {cr.references.map((ref) => (
+                  <button
+                    key={ref.id}
+                    onClick={() => {
+                      setSyncGroupA({
+                        book: ref.targetBook,
+                        chapter: ref.targetChapter,
+                        verse: ref.targetVerseStart,
+                      });
+                    }}
+                    className="w-full group/ref text-left rounded-lg border border-border/60 bg-muted/20 hover:bg-accent/70 hover:border-primary/40 p-2 text-xs transition-all flex items-start justify-between gap-2"
+                  >
+                    <div className="space-y-0.5 min-w-0">
+                      <div className="flex items-center gap-1.5 font-bold text-primary group-hover/ref:text-primary">
+                        <span>{ref.targetReference}</span>
+                        <ExternalLink className="size-2.5 opacity-60 group-hover/ref:opacity-100" />
+                      </div>
+                      {ref.note && (
+                        <p className="text-[11px] text-muted-foreground leading-relaxed">
+                          {ref.note}
+                        </p>
+                      )}
+                    </div>
+
+                    <Badge variant="outline" className="text-[9px] font-mono shrink-0 border-border/80 text-muted-foreground">
+                      {ref.votes}★
+                    </Badge>
+                  </button>
+                ))}
+              </div>
             </div>
-          );
-        })}
+          ))
+        ) : null}
 
         {/* Editor de Notas TipTap del Versículo */}
         <div className="rounded-xl border border-border bg-card p-3 shadow-xs space-y-2.5">
@@ -513,6 +663,11 @@ export function PanelRightAnalysis() {
           )}
         </div>
       </SidebarContent>
+
+      <LibraryManagerModal
+        open={catalogModalOpen}
+        onOpenChange={setCatalogModalOpen}
+      />
     </>
   );
 }

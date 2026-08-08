@@ -438,3 +438,90 @@ export function readCommentary(book: string, chapterRaw: string): {
 
   return { commentary, durationMs: performance.now() - t0 };
 }
+
+/**
+ * Consulta de referencias cruzadas (módulos type=crossref, p. ej. TSK / Treasury of Scripture Knowledge).
+ * Filtra por libro, capítulo y opcionalmente versículo específico.
+ */
+export function readCrossReferences(
+  book: string,
+  chapterRaw: string,
+  verseRaw?: string | null,
+): { crossref: import("../../types/bible.ts").CrossRefModule[]; durationMs: number } {
+  const t0 = performance.now();
+  const { book: bookId, chapter } = sanitizeReference(book, chapterRaw);
+  const verse = verseRaw ? Number.parseInt(verseRaw, 10) || null : null;
+  const crossref: import("../../types/bible.ts").CrossRefModule[] = [];
+
+  for (const info of listModules()) {
+    if (info.type !== "crossref" || info.status !== "installed") continue;
+    try {
+      const db = new Database(path.join(MODULES_DIR, `${info.id}.db`), { readonly: true });
+      try {
+        const hasTable = db
+          .prepare(`SELECT 1 FROM sqlite_master WHERE type='table' AND name='referencias_cruzadas'`)
+          .get();
+        if (!hasTable) continue;
+
+        let rows: Array<{
+          id_ref: number;
+          libro_origen: string;
+          capitulo_origen: number;
+          versiculo_origen: number;
+          libro_destino: string;
+          capitulo_destino: number;
+          versiculo_destino_inicio: number;
+          versiculo_destino_fin: number | null;
+          votos: number;
+          nota: string | null;
+        }> = [];
+
+        if (verse !== null) {
+          rows = db
+            .prepare(
+              `SELECT id_ref, libro_origen, capitulo_origen, versiculo_origen, libro_destino, capitulo_destino, versiculo_destino_inicio, versiculo_destino_fin, votos, nota
+               FROM referencias_cruzadas WHERE libro_origen = ? AND capitulo_origen = ? AND versiculo_origen = ?
+               ORDER BY votos DESC, id_ref ASC`,
+            )
+            .all(bookId, chapter, verse) as typeof rows;
+        } else {
+          rows = db
+            .prepare(
+              `SELECT id_ref, libro_origen, capitulo_origen, versiculo_origen, libro_destino, capitulo_destino, versiculo_destino_inicio, versiculo_destino_fin, votos, nota
+               FROM referencias_cruzadas WHERE libro_origen = ? AND capitulo_origen = ?
+               ORDER BY versiculo_origen ASC, votos DESC, id_ref ASC`,
+            )
+            .all(bookId, chapter) as typeof rows;
+        }
+
+        if (rows.length > 0) {
+          crossref.push({
+            moduleId: info.id,
+            name: info.name,
+            references: rows.map((r) => ({
+              id: r.id_ref,
+              sourceBook: r.libro_origen,
+              sourceChapter: r.capitulo_origen,
+              sourceVerse: r.versiculo_origen,
+              targetBook: r.libro_destino,
+              targetChapter: r.capitulo_destino,
+              targetVerseStart: r.versiculo_destino_inicio,
+              targetVerseEnd: r.versiculo_destino_fin,
+              targetReference: `${r.libro_destino} ${r.capitulo_destino}:${r.versiculo_destino_inicio}${
+                r.versiculo_destino_fin ? `-${r.versiculo_destino_fin}` : ""
+              }`,
+              votes: r.votos,
+              note: r.nota,
+            })),
+          });
+        }
+      } finally {
+        db.close();
+      }
+    } catch {
+      // Ignorar de forma resiliente si el archivo está siendo manipulado
+    }
+  }
+
+  return { crossref, durationMs: performance.now() - t0 };
+}

@@ -71,6 +71,42 @@ CREATE TABLE IF NOT EXISTS comentarios (
 CREATE INDEX IF NOT EXISTS idx_comentarios_ref ON comentarios(libro_id, capitulo, versiculo);
 `;
 
+/** Módulos de referencias cruzadas (p. ej. Treasury of Scripture Knowledge). */
+export const SCHEMA_CROSSREF = `
+CREATE TABLE IF NOT EXISTS referencias_cruzadas (
+  id_ref INTEGER PRIMARY KEY AUTOINCREMENT,
+  libro_origen TEXT NOT NULL,
+  capitulo_origen INTEGER NOT NULL,
+  versiculo_origen INTEGER NOT NULL,
+  libro_destino TEXT NOT NULL,
+  capitulo_destino INTEGER NOT NULL,
+  versiculo_destino_inicio INTEGER NOT NULL,
+  versiculo_destino_fin INTEGER,
+  votos INTEGER DEFAULT 1,
+  nota TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_crossref_src ON referencias_cruzadas(libro_origen, capitulo_origen, versiculo_origen);
+CREATE INDEX IF NOT EXISTS idx_crossref_dst ON referencias_cruzadas(libro_destino, capitulo_destino);
+`;
+
+/** Módulos devocionales (p. ej. Spurgeon, Manantiales en el Desierto). */
+export const SCHEMA_DEVOCIONAL = `
+CREATE TABLE IF NOT EXISTS devocionales (
+  id_devocional INTEGER PRIMARY KEY AUTOINCREMENT,
+  mes INTEGER NOT NULL,
+  dia INTEGER NOT NULL,
+  momento TEXT DEFAULT 'dia',
+  titulo TEXT NOT NULL,
+  pasaje_clave TEXT NOT NULL,
+  texto TEXT NOT NULL,
+  oracion TEXT,
+  UNIQUE(mes, dia, momento)
+);
+
+CREATE INDEX IF NOT EXISTS idx_devocionales_fecha ON devocionales(mes, dia);
+`;
+
 export const SCHEMA_LEXICON = `
 CREATE TABLE IF NOT EXISTS diccionario (
   strong_id TEXT PRIMARY KEY,

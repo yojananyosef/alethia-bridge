@@ -173,9 +173,11 @@ export function validateDependencies(manifest: ModuleManifest): string | null {
 }
 
 /** Valida un manifest completo para instalación. */
-export function validateManifest(manifest: ModuleManifest): string | null {
+export function validateManifest(manifest: ModuleManifest, allowOverwrite = false): string | null {
   if (!/^[A-Za-z0-9_.-]+$/.test(manifest.id)) return "id inválido";
   if (!manifest.name) return "name requerido";
-  if (existsSync(path.join(MODULES_DIR, `${manifest.id}.db`))) return `ya instalado: ${manifest.id}`;
+  if (!allowOverwrite && existsSync(path.join(MODULES_DIR, `${manifest.id}.db`))) {
+    return `ya instalado: ${manifest.id}`;
+  }
   return null;
 }

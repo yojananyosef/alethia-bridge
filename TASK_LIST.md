@@ -126,11 +126,46 @@ Monolito modular Next.js 16 (App Router) + TypeScript strict + RSC + Zustand + T
 - [x] **Retiro de previews NA28/WTT**: eran módulos demo del seed (Juan 3 y placeholder vacío) — eliminados; `BibleModuleId` pasó de unión cerrada a `string` (registry dinámico); eliminado `seed-test-db.ts` (pisaba RV1909 real con Juan 3; los módulos ahora vienen solo de `import-osis`/`import-lexicon`)
 - [x] Tests actualizados a módulos oficiales: `RV1909,SBLGNT` (morphgnt real `3AAI-S--` en vez de STEPBible `V-AIA-3S`); búsqueda griega valida cobertura del NT completo
 - [x] Lint del repo saneado: 5 errores pre-existentes de `react-hooks/set-state-in-effect` (ExegesisProvider, Omnibar, PanelLeftNavigation, PanelRightAnalysis, ThemeApplier, Workspace) corregidos con deferimiento por microtask
-- [x] Empaquetados vigentes: RV1909, SBLGNT, WLC, NBV, lexicon; 14/14 tests; tsc+lint limpios
+- [x] Empaquetados vigentes: RV1909, SBLGNT, WLC, NBV, lexicon, SPL, TA, TSK; 19/19 tests; tsc+lint limpios
+
+## FASE 14 — Catálogo/Marketplace Remoto, Descarga Atómica y Comentarios Ricos ✅
+- [x] **Índice Maestro de Catálogo (`data/catalog.json`)**: catálogo estructurado con 8 módulos oficiales (RV1909, SBLGNT, WLC, NBV, SPL, TA, TSK, lexicon), URLs de descarga, tamaños exactos en bytes, checksums SHA-256 reales, licencias y dependencias requeridas.
+- [x] **Tipos e Interfaces (`src/types/catalog.ts` y `src/types/bible.ts`)**: `RemoteModuleEntry`, `CatalogItem`, `CatalogResponse`, `InstallRemoteRequest`, `InstallRemoteResponse`, `CrossReference`, `CrossRefModule`, `CrossRefResponse`, `DevotionalEntry`.
+- [x] **Servicio de Catálogo & Semver (`src/lib/modules/catalog-service.ts`)**:
+  - [x] Comparador estricto Semver (`compareSemver`) con soporte de versiones mayores, menores, parches y pre-releases.
+  - [x] Detección de estados: `not_installed`, `installed` y `update_available` (cuando la versión del catálogo es superior a la local).
+  - [x] Caché en memoria de 1 hora con revalidación y soporte de `?refresh=1` / `process.env.ALETHIA_CATALOG_URL`.
+  - [x] Resolución automática y recursiva de dependencias en cadena (ej. instalación de textos con Strong descarga e instala `lexicon` primero).
+  - [x] Validación criptográfica de integridad SHA-256 previa a la instalación.
+  - [x] Fallback transparente para desarrollo local y modo offline (`dist-modules/` y empaquetado al vuelo).
+- [x] **Backend API Routes**:
+  - [x] `GET /api/catalog`: catálogo unificado con estado de instalación, dependencias y tiempos de respuesta.
+  - [x] `POST /api/modules/install-remote`: descarga atómica, verificación SHA-256, resolución en cadena e instalación en SQLite WAL.
+  - [x] `GET /api/catalog/download/[file]`: endpoint de descarga directa y streaming de `.abmod` para despliegue autónomo y pruebas locales sin CDN externo.
+  - [x] `GET /api/bible/read?crossref=1`: motor de consulta para módulos de referencias cruzadas con filtrado por libro, capítulo y versículo.
+- [x] **Módulo de Referencias Cruzadas (TSK — Treasury of Scripture Knowledge)**:
+  - [x] Schema SQLite `referencias_cruzadas` con índices bidireccionales `idx_crossref_src` e `idx_crossref_dst`.
+  - [x] ETL e importador `scripts/import-crossref.ts` que genera `TSK.db` y empaqueta `dist-modules/TSK-1.0.0.abmod`.
+- [x] **UI Marketplace & Biblioteca (`LibraryManagerModal.tsx` + `Dialog`)**:
+  - [x] Modal responsive con estadísticas globales (Disponibles, Instalados, Actualizaciones).
+  - [x] Pestañas de categoría ("Todos", "Biblias", "Léxicos y Morfología", "Comentarios", "Instalados", "Actualizaciones").
+  - [x] Filtros en vivo por texto (nombre, autor, palabras clave) y chips de idioma (ES, Griego, Hebreo).
+  - [x] Tarjetas de módulos con badges de tipo, idioma, versión, año, tamaño, autor, licencia y lista de características exegéticas.
+  - [x] Chips de dependencias con indicador visual de estado.
+  - [x] Botones de acción: Instalación con 1 clic, Actualización a nueva versión, Activar/Desactivar y Desinstalación.
+  - [x] Zona de carga manual / drag & drop para archivos `.abmod`.
+  - [x] Accesible desde `PanelLeftNavigation` (en modo expandido y colapsado) y desde el `Omnibar` (⌘K).
+- [x] **Renderizado Exegético y Referencias Cruzadas en Panel Derecho (`PanelRightAnalysis.tsx`)**:
+  - [x] Selector y toggle de modo para comentarios: "Versículo activo" vs "Capítulo completo" con navegación versículo a versículo y botón de copiado.
+  - [x] Bloque interactivo de Referencias Cruzadas TSK con indicador de relevancia (★), descripción temática y **salto instantáneo con 1 clic al pasaje citado (0 re-renders)**.
+  - [x] Enlace directo al catálogo si no hay módulos de comentario instalados.
+- [x] **Herramientas de Release y Publicación (`scripts/publish-modules-release.ts`)**:
+  - [x] Recalcula automáticamente los checksums SHA-256 de todos los paquetes `.abmod`.
+  - [x] Genera el workflow de GitHub Actions `.github/workflows/release.yml` para subida automática de assets a GitHub Releases al crear tags `v*`.
+- [x] **Validación y Suite de Tests**: 19/19 tests pasando (`tests/catalog.test.ts`, `tests/bible-api.test.ts`, `tests/modules.test.ts`), 0 errores de TypeScript (`tsc --noEmit`), 0 errores de ESLint (`bun run lint`).
 
 ## Próximos pasos (roadmap módulos)
-- [ ] Tipos de módulo `commentary`/`crossref`/`devotion` con renderizado dedicado
-- [ ] Registry remoto con checksums SHA-256 y actualizaciones por versión
 - [ ] Datos de usuario keyeados por `moduleId + osisRef` (independientes de la versión del módulo)
 - [ ] Tokenización por idioma + alineación interlineal generalizada multi-módulo
 - [ ] Importador SWORD binario (CrossWire Raw ZIP) solo para textos sin fuente XML
+

@@ -1,13 +1,10 @@
-"use client";
-
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   BookOpen,
   ChevronDown,
-  Compass,
+  Globe2,
   Layers,
   PackagePlus,
-  PanelLeftClose,
   PanelLeftOpen,
   Search,
   Sparkles,
@@ -26,6 +23,7 @@ import {
   SidebarHeader,
   useSidebar,
 } from "../components/ui/sidebar";
+import { LibraryManagerModal } from "./catalog/LibraryManagerModal";
 import { useExegesisStore } from "../store/useExegesisStore";
 import type { ModuleBook, ModuleInfo } from "../types/module";
 import { CANON } from "../lib/canon";
@@ -136,9 +134,10 @@ export function PanelLeftNavigation() {
   const [biblesOpen, setBiblesOpen] = useState(true);
   const [modulesOpen, setModulesOpen] = useState(true);
   const [expandedBookId, setExpandedBookId] = useState<string | null>("Gen");
+  const [catalogOpen, setCatalogOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const { syncGroupA, setSyncGroupA } = useExegesisStore();
+  const { syncGroupA } = useExegesisStore();
 
   const refresh = useCallback(async () => {
     try {
@@ -155,7 +154,9 @@ export function PanelLeftNavigation() {
 
   useEffect(() => {
     if (syncGroupA.book) {
-      setExpandedBookId(syncGroupA.book);
+      queueMicrotask(() => {
+        setExpandedBookId(syncGroupA.book);
+      });
     }
   }, [syncGroupA.book]);
 
@@ -280,8 +281,18 @@ export function PanelLeftNavigation() {
           <Button
             variant="ghost"
             size="icon-sm"
+            onClick={() => setCatalogOpen(true)}
+            title="Abrir Catálogo y Tienda de Recursos"
+            className="size-8 text-primary hover:bg-primary/10"
+          >
+            <Globe2 className="size-4" />
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="icon-sm"
             onClick={() => fileRef.current?.click()}
-            title="Instalar módulo .abmod"
+            title="Instalar módulo .abmod local"
             className="size-8 text-muted-foreground hover:text-primary"
           >
             <PackagePlus className="size-4" />
@@ -299,6 +310,12 @@ export function PanelLeftNavigation() {
             e.target.value = "";
           }}
         />
+
+        <LibraryManagerModal
+          open={catalogOpen}
+          onOpenChange={setCatalogOpen}
+          onModuleChanged={refresh}
+        />
       </div>
     );
   }
@@ -314,6 +331,17 @@ export function PanelLeftNavigation() {
               Biblioteca & Canon
             </span>
           </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCatalogOpen(true)}
+            className="h-6 gap-1 px-2 text-[10px] font-bold text-primary border-primary/30 hover:bg-primary/10"
+            title="Abrir Catálogo y Tienda de Módulos Remotos"
+          >
+            <Globe2 className="size-3" />
+            <span>Tienda</span>
+          </Button>
         </div>
       </SidebarHeader>
 
@@ -499,6 +527,19 @@ export function PanelLeftNavigation() {
                   );
                 })}
               </div>
+
+              {/* Botón de exploración de catálogo remoto */}
+              <div className="pt-1.5">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCatalogOpen(true)}
+                  className="w-full h-8 gap-1.5 text-xs font-bold text-primary border-primary/30 hover:bg-primary/10 transition-colors shadow-2xs"
+                >
+                  <Globe2 className="size-3.5" />
+                  <span>Explorar Tienda & Catálogo</span>
+                </Button>
+              </div>
             </SidebarGroupContent>
           )}
         </SidebarGroup>
@@ -515,6 +556,12 @@ export function PanelLeftNavigation() {
           )}
         </p>
       </SidebarFooter>
+
+      <LibraryManagerModal
+        open={catalogOpen}
+        onOpenChange={setCatalogOpen}
+        onModuleChanged={refresh}
+      />
     </>
   );
 }
