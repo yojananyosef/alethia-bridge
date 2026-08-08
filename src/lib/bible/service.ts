@@ -1,7 +1,6 @@
-import path from "node:path";
 import Database from "better-sqlite3";
-import { MODULES_DIR, getLexiconDb, getModuleDb, normalizeText, resolveModuleDbPath } from "../db/sqlite.ts";
-import { getModule, listModules } from "../modules/registry.ts";
+import { ensureModuleDbReady, getLexiconDb, getModuleDb, normalizeText, resolveModuleDbPath } from "../db/sqlite.ts";
+import { getModule, getPrimaryBibleModule, listModules, readModuleInfo } from "../modules/registry.ts";
 import type {
   BibleLanguage,
   BibleModuleId,
@@ -28,12 +27,26 @@ function moduleLanguage(moduleId: string): BibleLanguage {
 }
 
 export function parseModules(raw: string | null): BibleModuleId[] {
-  if (!raw) return ["RV1909"];
-  return raw
+  if (!raw || !raw.trim()) {
+    const primary = getPrimaryBibleModule();
+    return [primary?.id ?? "RV1909"];
+  }
+  const parsed = raw
     .split(",")
     .map((m) => m.trim().toUpperCase())
+    .filter(Boolean)
+    .map((m) => {
+      ensureModuleDbReady(m);
+      return m;
+    })
     .filter((m): m is BibleModuleId => getModule(m) !== null)
     .slice(0, 4);
+
+  if (parsed.length === 0) {
+    const primary = getPrimaryBibleModule();
+    return [primary?.id ?? "RV1909"];
+  }
+  return parsed;
 }
 
 export function sanitizeReference(book: string, chapterRaw: string): { book: string; chapter: number } {
@@ -407,21 +420,30 @@ export function readCommentary(book: string, chapterRaw: string): {
 } {
   const t0 = performance.now();
   const { book: bookId, chapter } = sanitizeReference(book, chapterRaw);
+  const altBookId =
+    bookId === "John" ? "Jn" : bookId === "Jn" ? "John" : bookId === "Gen" ? "Genesis" : bookId === "Genesis" ? "Gen" : bookId;
   const commentary: CommentaryModule[] = [];
 
-  for (const info of listModules()) {
+  const candidateModules = [...listModules()];
+  for (const defaultId of ["TA"]) {
+    if (!candidateModules.some((m) => m.id === defaultId)) {
+      const info = readModuleInfo(defaultId);
+      if (info) candidateModules.push(info);
+    }
+  }
+
+  for (const info of candidateModules) {
     if (info.type !== "commentary" || info.status !== "installed") continue;
     try {
-      // Lectura readonly sin tocar la caché: getModuleDb recrearía el archivo
-      // si otro proceso lo está desinstalando justo en este instante.
-      const db = new Database(resolveModuleDbPath(info.id), { readonly: true });
+      const dbPath = resolveModuleDbPath(info.id);
+      const db = new Database(dbPath, { readonly: true, fileMustExist: true });
       try {
         const rows = db
           .prepare(
             `SELECT versiculo, texto FROM comentarios
-             WHERE libro_id = ? AND capitulo = ? ORDER BY versiculo`,
+             WHERE (libro_id = ? OR libro_id = ?) AND capitulo = ? ORDER BY versiculo`,
           )
-          .all(bookId, chapter) as CommentaryRow[];
+          .all(bookId, altBookId, chapter) as CommentaryRow[];
         if (rows.length === 0) continue;
         commentary.push({
           moduleId: info.id,
@@ -453,10 +475,21 @@ export function readCrossReferences(
   const verse = verseRaw ? Number.parseInt(verseRaw, 10) || null : null;
   const crossref: import("../../types/bible.ts").CrossRefModule[] = [];
 
-  for (const info of listModules()) {
+  const candidateModules = [...listModules()];
+  for (const defaultId of ["TSK"]) {
+    if (!candidateModules.some((m) => m.id === defaultId)) {
+      const info = readModuleInfo(defaultId);
+      if (info) candidateModules.push(info);
+    }
+  }
+
+  const altBookId =
+    bookId === "John" ? "Jn" : bookId === "Jn" ? "John" : bookId === "Gen" ? "Genesis" : bookId === "Genesis" ? "Gen" : bookId;
+
+  for (const info of candidateModules) {
     if (info.type !== "crossref" || info.status !== "installed") continue;
     try {
-      const db = new Database(resolveModuleDbPath(info.id), { readonly: true });
+      const db = new Database(resolveModuleDbPath(info.id), { readonly: true, fileMustExist: true });
       try {
         const hasTable = db
           .prepare(`SELECT 1 FROM sqlite_master WHERE type='table' AND name='referencias_cruzadas'`)
@@ -480,18 +513,18 @@ export function readCrossReferences(
           rows = db
             .prepare(
               `SELECT id_ref, libro_origen, capitulo_origen, versiculo_origen, libro_destino, capitulo_destino, versiculo_destino_inicio, versiculo_destino_fin, votos, nota
-               FROM referencias_cruzadas WHERE libro_origen = ? AND capitulo_origen = ? AND versiculo_origen = ?
+               FROM referencias_cruzadas WHERE (libro_origen = ? OR libro_origen = ?) AND capitulo_origen = ? AND versiculo_origen = ?
                ORDER BY votos DESC, id_ref ASC`,
             )
-            .all(bookId, chapter, verse) as typeof rows;
+            .all(bookId, altBookId, chapter, verse) as typeof rows;
         } else {
           rows = db
             .prepare(
               `SELECT id_ref, libro_origen, capitulo_origen, versiculo_origen, libro_destino, capitulo_destino, versiculo_destino_inicio, versiculo_destino_fin, votos, nota
-               FROM referencias_cruzadas WHERE libro_origen = ? AND capitulo_origen = ?
+               FROM referencias_cruzadas WHERE (libro_origen = ? OR libro_origen = ?) AND capitulo_origen = ?
                ORDER BY versiculo_origen ASC, votos DESC, id_ref ASC`,
             )
-            .all(bookId, chapter) as typeof rows;
+            .all(bookId, altBookId, chapter) as typeof rows;
         }
 
         if (rows.length > 0) {
@@ -519,7 +552,7 @@ export function readCrossReferences(
         db.close();
       }
     } catch {
-      // Ignorar de forma resiliente si el archivo está siendo manipulado
+      // Ignorar fallas si la base está siendo manipulada
     }
   }
 

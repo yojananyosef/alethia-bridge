@@ -8,9 +8,10 @@ import {
   resolveModuleDbPath,
   initModuleMeta,
   writeManifestMeta,
+  closeModuleDb,
 } from "../db/sqlite.ts";
 import type { ModuleManifest } from "../../types/module.ts";
-import { validateManifest, validateDependencies } from "./registry.ts";
+import { validateManifest, validateDependencies, clearModuleInfoCache } from "./registry.ts";
 
 const MANIFEST_FILE = "manifest.json";
 const MODULE_DB_FILE = "module.db";
@@ -131,10 +132,17 @@ export function installModuleZip(
       strongScheme: manifest.strongScheme ?? "",
       bookOrder: (manifest.bookOrder ?? []).join(","),
     });
-    db.pragma("journal_mode = WAL");
-    db.pragma("wal_checkpoint(TRUNCATE)");
+    db.pragma("journal_mode = DELETE");
     db.close();
+    if (existsSync(target)) {
+      try {
+        closeModuleDb(manifest.id);
+        clearModuleInfoCache(manifest.id);
+        rmSync(target);
+      } catch {}
+    }
     renameSync(tmp, target);
+    clearModuleInfoCache(manifest.id);
   } catch (err) {
     if (existsSync(tmp)) rmSync(tmp);
     return { ok: false, error: err instanceof Error ? err.message : "error al escribir el módulo" };

@@ -32,7 +32,12 @@ function openReadOnly(moduleId: string): Database.Database | null {
     const db = new Database(file, { readonly: true });
     return db;
   } catch {
-    return null;
+    try {
+      const db = new Database(file);
+      return db;
+    } catch {
+      return null;
+    }
   }
 }
 
@@ -59,6 +64,14 @@ function parseManifest(meta: Record<string, string>): ModuleManifest | null {
 /** Cache de info por módulo, invalidada por mtime del .db y del .state.json. */
 const infoCache = new Map<string, { dbMtime: number; stateMtime: number; info: ModuleInfo | null }>();
 
+export function clearModuleInfoCache(moduleId?: string): void {
+  if (moduleId) {
+    infoCache.delete(moduleId);
+  } else {
+    infoCache.clear();
+  }
+}
+
 /** Lee el manifest y canon de un módulo desde su DB (tolerante a tablas ausentes). */
 export function readModuleInfo(moduleId: string): ModuleInfo | null {
   const file = resolveModuleDbPath(moduleId);
@@ -66,6 +79,7 @@ export function readModuleInfo(moduleId: string): ModuleInfo | null {
   try {
     dbMtime = statSync(file).mtimeMs;
   } catch {
+    infoCache.delete(moduleId);
     return null;
   }
   let stateMtime = 0;
@@ -75,11 +89,15 @@ export function readModuleInfo(moduleId: string): ModuleInfo | null {
     stateMtime = 0;
   }
   const cached = infoCache.get(moduleId);
-  if (cached && cached.dbMtime === dbMtime && cached.stateMtime === stateMtime) {
+  if (cached && cached.dbMtime === dbMtime && cached.stateMtime === stateMtime && cached.info !== null) {
     return cached.info;
   }
   const info = readModuleInfoUncached(moduleId);
-  infoCache.set(moduleId, { dbMtime, stateMtime, info });
+  if (info) {
+    infoCache.set(moduleId, { dbMtime, stateMtime, info });
+  } else {
+    infoCache.delete(moduleId);
+  }
   return info;
 }
 

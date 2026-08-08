@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import Database from "better-sqlite3";
 import { unzipSync } from "fflate";
@@ -21,20 +21,21 @@ export function getWritableModulesDir(): string {
   }
 }
 
-export function resolveModuleDbPath(moduleId: string): string {
-  const tmp = path.join(TMP_MODULES_DIR, `${moduleId}.db`);
-  if (existsSync(tmp)) return tmp;
-
-  const local = path.join(MODULES_DIR, `${moduleId}.db`);
-  if (existsSync(local)) return local;
-
-  return tmp;
-}
-
 /** Asegura que el archivo .db del módulo esté disponible en disco o tmp (extrayéndolo de dist-modules bajo demanda). */
 export function ensureModuleDbReady(moduleId: string): string {
-  const resolved = resolveModuleDbPath(moduleId);
-  if (existsSync(resolved)) return resolved;
+  const local = path.join(MODULES_DIR, `${moduleId}.db`);
+  if (existsSync(local)) {
+    try {
+      if (statSync(local).size > 0) return local;
+    } catch {}
+  }
+
+  const tmp = path.join(TMP_MODULES_DIR, `${moduleId}.db`);
+  if (existsSync(tmp)) {
+    try {
+      if (statSync(tmp).size > 0) return tmp;
+    } catch {}
+  }
 
   const distDir = path.join(process.cwd(), "dist-modules");
   if (existsSync(distDir)) {
@@ -47,9 +48,8 @@ export function ensureModuleDbReady(moduleId: string): string {
         if (existsSync(cand)) {
           const zip = unzipSync(new Uint8Array(readFileSync(cand)));
           const dbBytes = zip["module.db"];
-          if (dbBytes) {
+          if (dbBytes && dbBytes.length > 0) {
             mkdirSync(TMP_MODULES_DIR, { recursive: true });
-            const tmp = path.join(TMP_MODULES_DIR, `${moduleId}.db`);
             writeFileSync(tmp, dbBytes);
             return tmp;
           }
@@ -58,7 +58,11 @@ export function ensureModuleDbReady(moduleId: string): string {
     } catch {}
   }
 
-  return resolved;
+  return local;
+}
+
+export function resolveModuleDbPath(moduleId: string): string {
+  return ensureModuleDbReady(moduleId);
 }
 
 export const SCHEMA_VERSICULOS = `

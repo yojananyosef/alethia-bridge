@@ -38,7 +38,9 @@ export async function POST(request: Request): Promise<Response> {
     if (file.size > MAX_UPLOAD_BYTES) {
       return Response.json({ error: "el paquete supera 512MB" }, { status: 413 });
     }
-    const result = installModuleZip(new Uint8Array(await file.arrayBuffer()));
+    const result = installModuleZip(new Uint8Array(await file.arrayBuffer()), {
+      allowOverwrite: true,
+    });
     if (!result.ok) {
       return Response.json({ error: result.error }, { status: 422 });
     }

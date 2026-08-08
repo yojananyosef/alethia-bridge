@@ -1,6 +1,6 @@
 import { rmSync, existsSync } from "node:fs";
 import path from "node:path";
-import { getModule, setModuleEnabled } from "../../../../src/lib/modules/registry.ts";
+import { clearModuleInfoCache, getModule, setModuleEnabled } from "../../../../src/lib/modules/registry.ts";
 import { closeModuleDb, MODULES_DIR, TMP_MODULES_DIR } from "../../../../src/lib/db/sqlite.ts";
 
 export const dynamic = "force-dynamic";
@@ -32,12 +32,14 @@ export async function DELETE(_request: Request, ctx: RouteContext<"/api/modules/
   try {
     const { id } = await ctx.params;
     closeModuleDb(id);
+    clearModuleInfoCache(id);
     for (const ext of [".db", ".db-wal", ".db-shm", ".db-journal"]) {
       const file = path.join(MODULES_DIR, `${id}${ext}`);
       if (existsSync(file)) rmSync(file);
       const tmpFile = path.join(TMP_MODULES_DIR, `${id}${ext}`);
       if (existsSync(tmpFile)) rmSync(tmpFile);
     }
+    clearModuleInfoCache(id);
     return Response.json({ ok: true, moduleId: id });
   } catch (err) {
     return Response.json(
