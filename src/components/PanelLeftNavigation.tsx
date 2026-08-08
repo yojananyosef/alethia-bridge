@@ -32,8 +32,12 @@ import { cn } from "../lib/utils";
 const OT_BOOK_IDS = new Set(CANON.slice(0, 39).map((b) => b.id));
 const NT_BOOK_IDS = new Set(CANON.slice(39).map((b) => b.id));
 
-async function fetchModules(): Promise<ModuleInfo[]> {
-  const res = await fetch("/api/modules", { cache: "no-store" });
+async function fetchModules(installedList?: string[]): Promise<ModuleInfo[]> {
+  const headers: Record<string, string> = {};
+  if (installedList && installedList.length > 0) {
+    headers["x-installed-modules"] = installedList.join(",");
+  }
+  const res = await fetch("/api/modules", { cache: "no-store", headers });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const body = (await res.json()) as { modules: ModuleInfo[] };
   return body.modules;
@@ -137,16 +141,16 @@ export function PanelLeftNavigation() {
   const [catalogOpen, setCatalogOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const { syncGroupA } = useExegesisStore();
+  const { syncGroupA, installedModules } = useExegesisStore();
 
   const refresh = useCallback(async () => {
     try {
-      setModules(await fetchModules());
+      setModules(await fetchModules(installedModules));
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
-  }, []);
+  }, [installedModules]);
 
   useEffect(() => {
     void Promise.resolve().then(refresh);

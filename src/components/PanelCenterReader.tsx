@@ -302,6 +302,7 @@ export function PanelCenterReader() {
     syncGroupA,
     setSyncGroupA,
     activeModules,
+    installedModules,
     toggleModule,
     readerLayout,
     setReaderLayout,
@@ -323,7 +324,11 @@ export function PanelCenterReader() {
 
   useEffect(() => {
     let cancelled = false;
-    void fetch("/api/modules", { cache: "no-store" })
+    const headers: Record<string, string> = {};
+    if (installedModules && installedModules.length > 0) {
+      headers["x-installed-modules"] = installedModules.join(",");
+    }
+    void fetch("/api/modules", { cache: "no-store", headers })
       .then((r) => r.json())
       .then((d: { modules?: ModuleInfo[] }) => {
         if (!cancelled) setModules(d.modules ?? []);
@@ -332,7 +337,7 @@ export function PanelCenterReader() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [installedModules]);
 
   const load = useCallback(async () => {
     const activeStr = activeModules.length > 0 ? activeModules.join(",") : "RV1909";
@@ -341,8 +346,12 @@ export function PanelCenterReader() {
       chapter: String(syncGroupA.chapter),
       modules: activeStr,
     });
+    const headers: Record<string, string> = {};
+    if (installedModules && installedModules.length > 0) {
+      headers["x-installed-modules"] = installedModules.join(",");
+    }
     try {
-      const res = await fetch(`/api/bible/read?${params}`, { cache: "no-store" });
+      const res = await fetch(`/api/bible/read?${params}`, { cache: "no-store", headers });
       if (!res.ok) throw new Error(`API read falló: ${res.status}`);
       const body = (await res.json()) as ReadResponse;
       setData(body);
@@ -350,7 +359,7 @@ export function PanelCenterReader() {
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
-  }, [syncGroupA.book, syncGroupA.chapter, activeModules]);
+  }, [syncGroupA.book, syncGroupA.chapter, activeModules, installedModules]);
 
   useEffect(() => {
     void Promise.resolve().then(load);
