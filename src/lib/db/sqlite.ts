@@ -57,6 +57,20 @@ CREATE TABLE IF NOT EXISTS libros (
 );
 `;
 
+/** Módulos de comentario: una fila por versículo comentado (p. ej. Torres Amat). */
+export const SCHEMA_COMENTARIO = `
+CREATE TABLE IF NOT EXISTS comentarios (
+  id_comentario INTEGER PRIMARY KEY AUTOINCREMENT,
+  libro_id TEXT NOT NULL,
+  capitulo INTEGER NOT NULL,
+  versiculo INTEGER NOT NULL,
+  texto TEXT NOT NULL,
+  UNIQUE(libro_id, capitulo, versiculo)
+);
+
+CREATE INDEX IF NOT EXISTS idx_comentarios_ref ON comentarios(libro_id, capitulo, versiculo);
+`;
+
 export const SCHEMA_LEXICON = `
 CREATE TABLE IF NOT EXISTS diccionario (
   strong_id TEXT PRIMARY KEY,

@@ -1,8 +1,12 @@
-import { getLexiconDb, getModuleDb, normalizeText } from "../db/sqlite.ts";
-import { getModule } from "../modules/registry.ts";
+import path from "node:path";
+import Database from "better-sqlite3";
+import { MODULES_DIR, getLexiconDb, getModuleDb, normalizeText } from "../db/sqlite.ts";
+import { getModule, listModules } from "../modules/registry.ts";
 import type {
   BibleLanguage,
   BibleModuleId,
+  CommentaryModule,
+  CommentaryNote,
   InterlinearModule,
   LexiconEntry,
   MorphologyAnalysis,
@@ -388,4 +392,49 @@ export function getProperNames(strongId: string, book?: string): ProperName[] {
     geoLng: r.geo_lng,
     openbible: r.openbible,
   }));
+}
+
+interface CommentaryRow {
+  versiculo: number;
+  texto: string;
+}
+
+/** Comentarios instalados (módulos type=commentary, p. ej. Torres Amat)
+ *  para un capítulo: notas por versículo, en orden del capítulo. */
+export function readCommentary(book: string, chapterRaw: string): {
+  commentary: CommentaryModule[];
+  durationMs: number;
+} {
+  const t0 = performance.now();
+  const { book: bookId, chapter } = sanitizeReference(book, chapterRaw);
+  const commentary: CommentaryModule[] = [];
+
+  for (const info of listModules()) {
+    if (info.type !== "commentary" || info.status !== "installed") continue;
+    try {
+      // Lectura readonly sin tocar la caché: getModuleDb recrearía el archivo
+      // si otro proceso lo está desinstalando justo en este instante.
+      const db = new Database(path.join(MODULES_DIR, `${info.id}.db`), { readonly: true });
+      try {
+        const rows = db
+          .prepare(
+            `SELECT versiculo, texto FROM comentarios
+             WHERE libro_id = ? AND capitulo = ? ORDER BY versiculo`,
+          )
+          .all(bookId, chapter) as CommentaryRow[];
+        if (rows.length === 0) continue;
+        commentary.push({
+          moduleId: info.id,
+          name: info.name,
+          notes: rows.map((r) => ({ verse: r.versiculo, text: r.texto }) satisfies CommentaryNote),
+        });
+      } finally {
+        db.close();
+      }
+    } catch {
+      // Módulo en plena instal/desinstal: se omite en vez de fallar la lectura.
+    }
+  }
+
+  return { commentary, durationMs: performance.now() - t0 };
 }

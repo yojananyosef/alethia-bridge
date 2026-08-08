@@ -39,6 +39,24 @@ export interface ReadResponse {
   durationMs: number;
 }
 
+/** Nota de un comentario (p. ej. Torres Amat) para un versículo. */
+export interface CommentaryNote {
+  verse: number;
+  text: string;
+}
+
+/** Comentario de un módulo para un capítulo: notas por versículo. */
+export interface CommentaryModule {
+  moduleId: BibleModuleId;
+  name: string;
+  notes: CommentaryNote[];
+}
+
+export interface CommentaryResponse {
+  commentary: CommentaryModule[];
+  durationMs: number;
+}
+
 export interface MorphologyAnalysis {
   code: string;
   description: string;

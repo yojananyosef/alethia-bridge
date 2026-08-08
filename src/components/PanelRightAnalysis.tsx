@@ -26,7 +26,7 @@ import { Skeleton } from "../components/ui/skeleton";
 import { useExegesisStore } from "../store/useExegesisStore";
 import { addNote, deleteNote, notesForVerse } from "../lib/db/dexie-user-db";
 import type { UserNote } from "../lib/db/dexie-user-db";
-import type { LexiconEntry, MorphologyAnalysis, ProperName } from "../types/bible";
+import type { CommentaryModule, LexiconEntry, MorphologyAnalysis, ProperName } from "../types/bible";
 import { cn } from "../lib/utils";
 
 async function fetchJson<T>(url: string): Promise<T> {
@@ -48,6 +48,7 @@ export function PanelRightAnalysis() {
   const [morph, setMorph] = useState<MorphologyAnalysis | null>(null);
   const [nombres, setNombres] = useState<ProperName[]>([]);
   const [notes, setNotes] = useState<UserNote[]>([]);
+  const [commentary, setCommentary] = useState<CommentaryModule[]>([]);
   const [copiedLexicon, setCopiedLexicon] = useState(false);
 
   useEffect(() => {
@@ -114,6 +115,26 @@ export function PanelRightAnalysis() {
       cancelled = true;
     };
   }, [verseId]);
+
+  // Comentario del capítulo (p. ej. Torres Amat): se filtra por versículo activo.
+  useEffect(() => {
+    let cancelled = false;
+    void Promise.resolve().then(() => {
+      if (!cancelled) setCommentary([]);
+    });
+    fetchJson<{ commentary: CommentaryModule[] }>(
+      `/api/bible/read?commentary=1&book=${encodeURIComponent(syncGroupA.book)}&chapter=${syncGroupA.chapter}`,
+    )
+      .then((b) => {
+        if (!cancelled) setCommentary(b.commentary);
+      })
+      .catch(() => {
+        if (!cancelled) setCommentary([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [syncGroupA.book, syncGroupA.chapter]);
 
   const editor = useEditor({
     extensions: [StarterKit],
@@ -340,6 +361,37 @@ export function PanelRightAnalysis() {
             </p>
           </div>
         )}
+
+        {/* Comentario bíblico (módulos type=commentary, p. ej. Torres Amat) */}
+        {commentary.map((c) => {
+          const note = c.notes.find((n) => n.verse === syncGroupA.verse);
+          return (
+            <div key={c.moduleId} className="rounded-xl border border-border bg-card p-3 shadow-xs space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <BookMarked className="size-3.5 text-primary" />
+                  <span className="text-xs font-bold text-foreground">{c.name}</span>
+                </div>
+                <span className="font-mono text-[10px] text-muted-foreground">
+                  {syncGroupA.book} {syncGroupA.chapter}:{syncGroupA.verse}
+                </span>
+              </div>
+              {note ? (
+                <div className="space-y-2">
+                  {note.text.split(/\n\s*\n/).map((p, i) => (
+                    <p key={i} className="text-[11px] leading-relaxed text-foreground">
+                      {p}
+                    </p>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-[11px] text-muted-foreground">
+                  Sin nota de comentario para este versículo.
+                </p>
+              )}
+            </div>
+          );
+        })}
 
         {/* Editor de Notas TipTap del Versículo */}
         <div className="rounded-xl border border-border bg-card p-3 shadow-xs space-y-2.5">

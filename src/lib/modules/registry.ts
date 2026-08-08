@@ -118,6 +118,10 @@ function readModuleInfoUncached(moduleId: string): ModuleInfo | null {
       bookCount: books.length,
       books: manifest.type === "bible" ? books : undefined,
     };
+  } catch {
+    // Instal/desinstal concurrentes pueden dejar archivos a medio renombrar:
+    // el módulo se trata como no disponible en vez de reventar la lista.
+    return null;
   } finally {
     db.close();
   }
