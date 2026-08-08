@@ -18,7 +18,8 @@ import type {
 function moduleLanguage(moduleId: string): BibleLanguage {
   const info = getModule(moduleId);
   if (info?.language === "es") return "es";
-  if (info?.language === "el") return "el";
+  // "grc" (griego antiguo/koyné, p. ej. la Septuaginta) es griego, no hebreo:
+  if (info?.language === "el" || info?.language === "grc") return "el";
   return "he";
 }
 

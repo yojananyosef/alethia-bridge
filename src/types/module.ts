@@ -2,7 +2,7 @@
 
 export type ModuleType = "bible" | "lexicon" | "commentary" | "crossref" | "devotion";
 
-export type ModuleLanguage = "es" | "el" | "he" | "en" | "la";
+export type ModuleLanguage = "es" | "el" | "he" | "en" | "la" | "grc";
 
 /** Versión de esquema que la app entiende; los módulos más nuevos se rechazan con mensaje claro. */
 export const APP_SCHEMA_VERSION = 1;
