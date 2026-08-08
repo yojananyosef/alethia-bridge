@@ -24,6 +24,16 @@ async function listModules(): Promise<ModuleInfo[]> {
 
 describe("API /api/modules", () => {
   test("lista módulos instalados con manifest y canon", async () => {
+    // Asegurar que RV1909 esté habilitado inicialmente
+    await PATCH(
+      new Request("http://localhost/api/modules/RV1909", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ enabled: true }),
+      }),
+      moduleCtx("RV1909"),
+    );
+
     const modules = await listModules();
     const ids = modules.map((m) => m.id);
     assert.ok(ids.includes("RV1909"), "falta RV1909");
@@ -44,30 +54,31 @@ describe("API /api/modules", () => {
   });
 
   test("PATCH activa/desactiva y GET lo refleja", async () => {
-    const res = await PATCH(
-      new Request("http://localhost/api/modules/RV1909", {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ enabled: false }),
-      }),
-      moduleCtx("RV1909"),
-    );
-    assert.equal(res.status, 200);
-    const body = (await res.json()) as { module: ModuleInfo };
-    assert.equal(body.module.status, "disabled");
+    try {
+      const res = await PATCH(
+        new Request("http://localhost/api/modules/RV1909", {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ enabled: false }),
+        }),
+        moduleCtx("RV1909"),
+      );
+      assert.equal(res.status, 200);
+      const body = (await res.json()) as { module: ModuleInfo };
+      assert.equal(body.module.status, "disabled");
 
-    const after = await listModules();
-    assert.equal(after.find((m) => m.id === "RV1909")!.status, "disabled");
-
-    // re-activar (deja el estado limpio)
-    await PATCH(
-      new Request("http://localhost/api/modules/RV1909", {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ enabled: true }),
-      }),
-      moduleCtx("RV1909"),
-    );
+      const after = await listModules();
+      assert.equal(after.find((m) => m.id === "RV1909")!.status, "disabled");
+    } finally {
+      await PATCH(
+        new Request("http://localhost/api/modules/RV1909", {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ enabled: true }),
+        }),
+        moduleCtx("RV1909"),
+      );
+    }
   });
 
   test("instala y desinstala un paquete .abmod (módulo de comentario)", async () => {

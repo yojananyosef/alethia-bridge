@@ -2,7 +2,13 @@ import { existsSync, readFileSync, renameSync, rmSync, writeFileSync } from "nod
 import path from "node:path";
 import { strFromU8, unzipSync, zipSync, type Zippable } from "fflate";
 import Database from "better-sqlite3";
-import { MODULES_DIR, initModuleMeta, writeManifestMeta } from "../db/sqlite.ts";
+import {
+  MODULES_DIR,
+  getWritableModulesDir,
+  resolveModuleDbPath,
+  initModuleMeta,
+  writeManifestMeta,
+} from "../db/sqlite.ts";
 import type { ModuleManifest } from "../../types/module.ts";
 import { validateManifest, validateDependencies } from "./registry.ts";
 
@@ -42,10 +48,11 @@ function readManifestFromDb(db: Database.Database): ModuleManifest {
  *   module.db     — copia limpia (WAL truncado) de la base
  */
 export async function packageModuleToZip(moduleId: string): Promise<Uint8Array> {
-  const src = path.join(MODULES_DIR, `${moduleId}.db`);
+  const src = resolveModuleDbPath(moduleId);
   if (!existsSync(src)) throw new Error(`módulo no instalado: ${moduleId}`);
 
-  const tmp = path.join(MODULES_DIR, `.tmp-${moduleId}.db`);
+  const writableDir = getWritableModulesDir();
+  const tmp = path.join(writableDir, `.tmp-${moduleId}.db`);
   if (existsSync(tmp)) rmSync(tmp);
 
   let manifest: ModuleManifest;
@@ -69,7 +76,7 @@ export async function packageModuleToZip(moduleId: string): Promise<Uint8Array> 
 
 /**
  * Instala un paquete .abmod validando manifest y escribiendo
- * data/modules/<id>.db de forma atómica (temp + rename).
+ * en el directorio de módulos de forma atómica (temp + rename).
  */
 export function installModuleZip(
   zipBytes: Uint8Array,
@@ -100,8 +107,9 @@ export function installModuleZip(
   const depError = validateDependencies(manifest);
   if (depError) return { ok: false, error: depError };
 
-  const target = path.join(MODULES_DIR, `${manifest.id}.db`);
-  const tmp = path.join(MODULES_DIR, `.install-${manifest.id}.db`);
+  const writableDir = getWritableModulesDir();
+  const target = path.join(writableDir, `${manifest.id}.db`);
+  const tmp = path.join(writableDir, `.install-${manifest.id}.db`);
 
   try {
     writeFileSync(tmp, dbBytes);

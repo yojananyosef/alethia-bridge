@@ -1,28 +1,32 @@
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import Database from "better-sqlite3";
-import { MODULES_DIR } from "../db/sqlite.ts";
+import { MODULES_DIR, TMP_MODULES_DIR, getWritableModulesDir, resolveModuleDbPath } from "../db/sqlite.ts";
 import type { ModuleBook, ModuleInfo, ModuleManifest } from "../../types/module.ts";
 
-const STATE_FILE = path.join(MODULES_DIR, ".state.json");
+function getStateFile(): string {
+  return path.join(getWritableModulesDir(), ".state.json");
+}
 
 type ModuleState = { disabled: string[] };
 
 function readState(): ModuleState {
   try {
-    return JSON.parse(readFileSync(STATE_FILE, "utf8")) as ModuleState;
+    return JSON.parse(readFileSync(getStateFile(), "utf8")) as ModuleState;
   } catch {
     return { disabled: [] };
   }
 }
 
 function writeState(state: ModuleState): void {
-  writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));
+  try {
+    writeFileSync(getStateFile(), JSON.stringify(state, null, 2));
+  } catch {}
 }
 
 /** Abre un módulo en solo lectura (sin WAL; copia a temp si hay WAL activo). */
 function openReadOnly(moduleId: string): Database.Database | null {
-  const file = path.join(MODULES_DIR, `${moduleId}.db`);
+  const file = resolveModuleDbPath(moduleId);
   if (!existsSync(file)) return null;
   try {
     const db = new Database(file, { readonly: true });
@@ -57,7 +61,7 @@ const infoCache = new Map<string, { dbMtime: number; stateMtime: number; info: M
 
 /** Lee el manifest y canon de un módulo desde su DB (tolerante a tablas ausentes). */
 export function readModuleInfo(moduleId: string): ModuleInfo | null {
-  const file = path.join(MODULES_DIR, `${moduleId}.db`);
+  const file = resolveModuleDbPath(moduleId);
   let dbMtime = 0;
   try {
     dbMtime = statSync(file).mtimeMs;
@@ -66,7 +70,7 @@ export function readModuleInfo(moduleId: string): ModuleInfo | null {
   }
   let stateMtime = 0;
   try {
-    stateMtime = statSync(STATE_FILE).mtimeMs;
+    stateMtime = statSync(getStateFile()).mtimeMs;
   } catch {
     stateMtime = 0;
   }
@@ -114,7 +118,7 @@ function readModuleInfoUncached(moduleId: string): ModuleInfo | null {
     return {
       ...manifest,
       status: state.disabled.includes(moduleId) ? "disabled" : "installed",
-      fileSize: statSync(path.join(MODULES_DIR, `${moduleId}.db`)).size,
+      fileSize: statSync(resolveModuleDbPath(moduleId)).size,
       bookCount: books.length,
       books: manifest.type === "bible" ? books : undefined,
     };
@@ -127,15 +131,24 @@ function readModuleInfoUncached(moduleId: string): ModuleInfo | null {
   }
 }
 
-/** Escanea data/modules/*.db y devuelve la info de todos los módulos instalados. */
+/** Escanea módulos instalados (en bundle y en almacenamiento temporal). */
 export function listModules(): ModuleInfo[] {
-  const modules: ModuleInfo[] = [];
-  for (const file of readdirSync(MODULES_DIR)) {
-    if (!file.endsWith(".db")) continue;
-    const info = readModuleInfo(file.replace(/\.db$/, ""));
-    if (info) modules.push(info);
+  const moduleMap = new Map<string, ModuleInfo>();
+  const dirs = [MODULES_DIR, TMP_MODULES_DIR];
+
+  for (const dir of dirs) {
+    if (!existsSync(dir)) continue;
+    try {
+      for (const file of readdirSync(dir)) {
+        if (!file.endsWith(".db") || file.startsWith(".")) continue;
+        const moduleId = file.replace(/\.db$/, "");
+        const info = readModuleInfo(moduleId);
+        if (info) moduleMap.set(moduleId, info);
+      }
+    } catch {}
   }
-  return modules.sort((a, b) => a.id.localeCompare(b.id));
+
+  return Array.from(moduleMap.values()).sort((a, b) => a.id.localeCompare(b.id));
 }
 
 export function getModule(moduleId: string): ModuleInfo | null {

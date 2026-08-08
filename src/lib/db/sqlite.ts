@@ -1,16 +1,31 @@
-import { existsSync, mkdirSync } from "node:fs";
+import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import Database from "better-sqlite3";
 
 export const MODULES_DIR = path.join(process.cwd(), "data", "modules");
 export const TMP_MODULES_DIR = path.join(process.env.TMPDIR || "/tmp", "alethia-modules");
 
+export function getWritableModulesDir(): string {
+  try {
+    mkdirSync(MODULES_DIR, { recursive: true });
+    const testFile = path.join(MODULES_DIR, `.test-write-${Date.now()}.tmp`);
+    writeFileSync(testFile, "1");
+    rmSync(testFile);
+    return MODULES_DIR;
+  } catch {
+    try {
+      mkdirSync(TMP_MODULES_DIR, { recursive: true });
+    } catch {}
+    return TMP_MODULES_DIR;
+  }
+}
+
 export function resolveModuleDbPath(moduleId: string): string {
-  const local = path.join(MODULES_DIR, `${moduleId}.db`);
-  if (existsSync(local)) return local;
   const tmp = path.join(TMP_MODULES_DIR, `${moduleId}.db`);
   if (existsSync(tmp)) return tmp;
-  return local;
+  const local = path.join(MODULES_DIR, `${moduleId}.db`);
+  if (existsSync(local)) return local;
+  return tmp;
 }
 
 export const SCHEMA_VERSICULOS = `
