@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Bold,
   BookMarked,
@@ -44,6 +44,7 @@ export function PanelRightAnalysis() {
   const installedModules = useExegesisStore((s) => s.installedModules);
   const activeLexiconTerm = useExegesisStore((s) => s.activeLexiconTerm);
   const setActiveLexiconTerm = useExegesisStore((s) => s.setActiveLexiconTerm);
+  const toggleRightSidebar = useExegesisStore((s) => s.toggleRightSidebar);
   const syncGroupA = useExegesisStore((s) => s.syncGroupA);
   const setSyncGroupA = useExegesisStore((s) => s.setSyncGroupA);
   const verseId = useMemo(
@@ -92,36 +93,41 @@ export function PanelRightAnalysis() {
       .catch(() => {
         if (!cancelled) setNombres([]);
       });
+    fetchJson<{ morph: MorphologyAnalysis }>(
+      `/api/bible/read?morph=${encodeURIComponent(activeLexiconTerm)}`,
+    )
+      .then((b) => {
+        if (!cancelled) setMorph(b.morph);
+      })
+      .catch(() => {
+        if (!cancelled) setMorph(null);
+      });
     return () => {
       cancelled = true;
     };
   }, [activeLexiconTerm, syncGroupA.book]);
 
-  useEffect(() => {
-    if (!lexicon) return;
-    let cancelled = false;
-    fetchJson<{ morph: MorphologyAnalysis }>(
-      `/api/bible/read?morph=${encodeURIComponent(lexicon.strongId)}`,
-    )
-      .then((b) => {
-        if (!cancelled) setMorph(b.morph);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [lexicon]);
-
-  const refreshNotes = async () => {
-    const ns = await notesForVerse(verseId);
-    setNotes(ns);
-  };
+  const refreshNotes = useCallback(async () => {
+    try {
+      const data = await notesForVerse(verseId);
+      setNotes(data);
+    } catch {
+      setNotes([]);
+    }
+  }, [verseId]);
 
   useEffect(() => {
     let cancelled = false;
-    void notesForVerse(verseId).then((ns) => {
-      if (!cancelled) setNotes(ns);
+    void Promise.resolve().then(() => {
+      if (!cancelled) setNotes([]);
     });
+    notesForVerse(verseId)
+      .then((data) => {
+        if (!cancelled) setNotes(data);
+      })
+      .catch(() => {
+        if (!cancelled) setNotes([]);
+      });
     return () => {
       cancelled = true;
     };
@@ -233,25 +239,37 @@ export function PanelRightAnalysis() {
 
   return (
     <>
-      <SidebarHeader className="border-b border-border bg-card/60 p-2.5">
-        <div className="flex h-7 items-center justify-between gap-2 px-1">
-          <div className="flex items-center gap-1.5">
-            <BookMarked className="size-4 text-primary" />
-            <span className="text-xs font-bold uppercase tracking-wider text-foreground">
-              Análisis Léxico
-            </span>
-          </div>
+      <SidebarHeader className="h-12 border-b border-border bg-card/80 px-3.5 flex flex-row items-center justify-between">
+        <div className="flex items-center gap-1.5">
+          <BookMarked className="size-4 text-primary" />
+          <span className="text-xs font-bold uppercase tracking-wider text-foreground">
+            Análisis Léxico
+          </span>
+        </div>
+
+        <div className="flex items-center gap-1">
           {activeLexiconTerm && (
             <Button
               variant="ghost"
               size="icon-sm"
               onClick={() => setActiveLexiconTerm(null)}
               title="Limpiar término seleccionado"
-              className="size-6 text-muted-foreground hover:text-foreground hover:bg-accent"
+              className="size-7 text-muted-foreground hover:text-foreground hover:bg-accent"
             >
               <X className="size-3.5" />
             </Button>
           )}
+
+          {/* Botón de cerrar en móvil */}
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={toggleRightSidebar}
+            title="Cerrar panel de análisis"
+            className="size-7 md:hidden text-muted-foreground hover:text-foreground hover:bg-accent"
+          >
+            <X className="size-4" />
+          </Button>
         </div>
       </SidebarHeader>
 

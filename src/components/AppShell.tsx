@@ -12,16 +12,31 @@ import { ThemeSwitcher } from "./ThemeSwitcher";
 import { useExegesisStore } from "../store/useExegesisStore";
 import { cn } from "../lib/utils";
 
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "../components/ui/sheet";
+import { useIsMobile } from "../hooks/use-mobile";
+
 /**
  * Shell principal de Alethia Bridge.
- * Arquitectura de viewport sólida y sin conflictos de doble SidebarProvider:
- * - Sidebar izquierdo: Canon bíblico y módulos instalados
+ * Arquitectura de viewport sólida y sin conflictos:
+ * - Sidebar izquierdo: Canon bíblico, módulos y ajustes de lectura
  * - Header superior: Logo único, Omnibar FTS5, toggles y tema
- * - Centro: Lector interlineal / paralelo multiversión
- * - Lateral derecho: Panel de análisis léxico y notas TipTap con toggle fluido
+ * - Centro: Lector interlineal / paralelo multiversión con viewport estable
+ * - Lateral derecho: Panel de análisis léxico y notas (Sheet modal en móvil, columna en desktop)
  */
 export function AppShell() {
-  const { isRightSidebarOpen, toggleRightSidebar, activeLexiconTerm } = useExegesisStore();
+  const isMobile = useIsMobile();
+  const {
+    isRightSidebarOpen,
+    toggleRightSidebar,
+    setRightSidebarOpen,
+    activeLexiconTerm,
+  } = useExegesisStore();
 
   return (
     <SidebarProvider defaultOpen={true}>
@@ -31,8 +46,8 @@ export function AppShell() {
 
       <SidebarInset className="flex min-w-0 flex-1 flex-col overflow-hidden bg-background">
         {/* Cabecera Principal Unificada */}
-        <header className="flex h-12 shrink-0 items-center justify-between gap-3 border-b border-border bg-card/80 px-3.5 backdrop-blur-xs z-20">
-          <div className="flex items-center gap-2.5">
+        <header className="flex h-12 shrink-0 items-center justify-between gap-2.5 sm:gap-3 border-b border-border bg-card/80 px-3 sm:px-3.5 backdrop-blur-xs z-20">
+          <div className="flex items-center gap-2">
             <SidebarTrigger title="Alternar menú de libros y módulos (Ctrl+B)" />
             <div className="flex items-center gap-1.5 font-bold tracking-tight text-sm select-none">
               <span className="text-foreground">Alethia</span>
@@ -71,18 +86,37 @@ export function AppShell() {
         </header>
 
         {/* Área de trabajo: Lector central + Panel derecho integrado */}
-        <div className="flex min-w-0 flex-1 overflow-hidden">
+        <div className="relative flex min-w-0 flex-1 overflow-hidden">
           <main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-background">
             <PanelCenterReader />
           </main>
 
-          {/* Panel derecho de análisis léxico y notas TipTap */}
-          {isRightSidebarOpen && (
-            <aside className="w-80 md:w-96 shrink-0 border-l border-border bg-card/40 flex flex-col overflow-hidden animate-in slide-in-from-right-4 duration-200">
+          {/* Panel derecho de análisis léxico y notas en DESKTOP (md+) */}
+          {!isMobile && isRightSidebarOpen && (
+            <aside className="hidden md:flex w-80 lg:w-96 shrink-0 flex-col overflow-hidden border-l border-border bg-card/40 animate-in slide-in-from-right-2 duration-150">
               <PanelRightAnalysis />
             </aside>
           )}
         </div>
+
+        {/* Panel derecho de análisis léxico y notas en MÓVIL (<md) como Sheet offcanvas */}
+        {isMobile && (
+          <Sheet open={isRightSidebarOpen} onOpenChange={setRightSidebarOpen}>
+            <SheetContent
+              side="right"
+              showCloseButton={false}
+              className="w-[90vw] sm:max-w-md p-0 overflow-hidden bg-card text-card-foreground border-l border-border [&>button]:hidden focus:outline-none"
+            >
+              <SheetHeader className="sr-only">
+                <SheetTitle>Análisis Léxico y Notas</SheetTitle>
+                <SheetDescription>Panel de análisis exegético y cuaderno de notas</SheetDescription>
+              </SheetHeader>
+              <div className="flex h-full w-full flex-col overflow-hidden">
+                <PanelRightAnalysis />
+              </div>
+            </SheetContent>
+          </Sheet>
+        )}
       </SidebarInset>
 
       <ThemeApplier />

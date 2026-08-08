@@ -443,8 +443,8 @@ export function PanelCenterReader() {
 
   return (
     <main className="flex h-full flex-col bg-background select-text">
-      {/* Header del Lector con controles pro */}
-      <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-border bg-card/80 px-4 py-2 backdrop-blur-xs">
+      {/* Header del Lector con controles adaptables y altura h-12 alineada */}
+      <header className="flex h-12 shrink-0 items-center justify-between gap-2 border-b border-border bg-card/80 px-3 sm:px-4 backdrop-blur-xs z-10">
         {/* Pasaje y navegación de capítulos */}
         <div className="flex items-center gap-2">
           <div className="flex items-center rounded-lg border border-border bg-background p-0.5 shadow-2xs">
@@ -454,12 +454,13 @@ export function PanelCenterReader() {
               onClick={prevChapter}
               title="Capítulo anterior"
               aria-label="Capítulo anterior"
+              className="size-7"
             >
               <ChevronLeft className="size-4" />
             </Button>
             <div className="flex items-center gap-1.5 px-2">
-              <BookOpen className="size-3.5 text-primary" />
-              <h1 className="text-sm font-bold tracking-tight">
+              <BookOpen className="size-3.5 text-primary shrink-0" />
+              <h1 className="text-xs sm:text-sm font-bold tracking-tight truncate max-w-[130px] sm:max-w-none">
                 {currentCanonBook?.nombre ?? syncGroupA.book} {syncGroupA.chapter}
               </h1>
             </div>
@@ -469,18 +470,19 @@ export function PanelCenterReader() {
               onClick={nextChapter}
               title="Capítulo siguiente"
               aria-label="Capítulo siguiente"
+              className="size-7"
             >
               <ChevronRight className="size-4" />
             </Button>
           </div>
 
-          <span className="font-mono text-[11px] text-muted-foreground">
+          <span className="hidden sm:inline font-mono text-[11px] text-muted-foreground">
             {data ? `${data.durationMs.toFixed(1)}ms` : ""}
           </span>
         </div>
 
-        {/* Selector de módulos activos */}
-        <div className="flex items-center gap-2">
+        {/* Selector de módulos activos en DESKTOP (md+) */}
+        <div className="hidden md:flex items-center gap-2">
           <ModuleBar
             modules={modules}
             activeModules={activeModules}
@@ -488,8 +490,8 @@ export function PanelCenterReader() {
           />
         </div>
 
-        {/* Herramientas de visualización y estudio */}
-        <div className="flex items-center gap-1.5">
+        {/* Herramientas de visualización y estudio en DESKTOP (md+) */}
+        <div className="hidden md:flex items-center gap-1.5">
           {/* Selector de Tamaño de Fuente */}
           <ToggleGroup
             size="sm"
@@ -609,10 +611,38 @@ export function PanelCenterReader() {
             </ToggleGroupItem>
           </ToggleGroup>
         </div>
+
+        {/* Herramientas compactas en MÓVIL (<md) */}
+        <div className="flex md:hidden items-center gap-1">
+          {/* Tamaño de fuente móvil rápido */}
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => {
+              const cycle = { sm: "base", base: "lg", lg: "xl", xl: "sm" } as const;
+              setFontSize(cycle[fontSize] ?? "base");
+            }}
+            title={`Tamaño actual: ${fontSize.toUpperCase()} (Tocar para cambiar)`}
+            className="size-7 text-[11px] font-bold font-mono"
+          >
+            {fontSize === "sm" ? "A-" : fontSize === "lg" ? "A+" : fontSize === "xl" ? "A++" : "A"}
+          </Button>
+
+          {/* Copiar pasaje */}
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => void copyPassage()}
+            title="Copiar texto del capítulo"
+            className="size-7"
+          >
+            {copied ? <Check className="size-3.5 text-primary" /> : <Copy className="size-3.5" />}
+          </Button>
+        </div>
       </header>
 
       {/* Contenedor del Texto Bíblico */}
-      <div className={cn("flex-1 overflow-y-auto px-6 py-6 scrollbar-thin", sizeClass)}>
+      <div className={cn("flex-1 overflow-y-auto px-3.5 py-4 sm:px-6 sm:py-6 scrollbar-thin", sizeClass)}>
         {error ? (
           <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
             {error}

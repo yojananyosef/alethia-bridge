@@ -1,14 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   BookOpen,
+  Check,
   ChevronDown,
+  Columns3,
   Globe2,
   Layers,
   PackagePlus,
-  PanelLeftOpen,
+  Rows3,
   Search,
+  SlidersHorizontal,
   Sparkles,
+  Tag,
   Trash2,
+  Type,
 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Checkbox } from "../components/ui/checkbox";
@@ -135,13 +140,28 @@ export function PanelLeftNavigation() {
   const [busy, setBusy] = useState(false);
   const [searchFilter, setSearchFilter] = useState("");
   const [testamentFilter, setTestamentFilter] = useState<"ALL" | "OT" | "NT">("ALL");
+  const [readerVersionsOpen, setReaderVersionsOpen] = useState(true);
   const [biblesOpen, setBiblesOpen] = useState(true);
-  const [modulesOpen, setModulesOpen] = useState(true);
+  const [readerOptionsOpen, setReaderOptionsOpen] = useState(false);
+  const [modulesOpen, setModulesOpen] = useState(false);
   const [expandedBookId, setExpandedBookId] = useState<string | null>("Gen");
   const [catalogOpen, setCatalogOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const { syncGroupA, installedModules } = useExegesisStore();
+  const {
+    syncGroupA,
+    installedModules,
+    activeModules,
+    toggleModule,
+    readerLayout,
+    setReaderLayout,
+    fontSize,
+    setFontSize,
+    showStrongs,
+    setShowStrongs,
+    showMorphology,
+    setShowMorphology,
+  } = useExegesisStore();
 
   const refresh = useCallback(async () => {
     try {
@@ -169,6 +189,11 @@ export function PanelLeftNavigation() {
       (modules ?? [])
         .filter((m) => m.type === "bible" && m.status === "installed" && (m.books?.length ?? 0) > 0)
         .sort((a, b) => (b.books?.length ?? 0) - (a.books?.length ?? 0))[0] ?? null,
+    [modules],
+  );
+
+  const bibleModules = useMemo(
+    () => (modules ?? []).filter((m) => m.type === "bible" && m.status === "installed"),
     [modules],
   );
 
@@ -235,53 +260,43 @@ export function PanelLeftNavigation() {
     }
   };
 
-  // MODO COLAPSADO (icono 48px): vista ultra-limpia sin textos rotos
+  // MODO COLAPSADO (icono 48px): vista ultra-limpia sin textos rotos ni botones duplicados
   if (state === "collapsed") {
     return (
-      <div className="flex h-full w-full flex-col items-center justify-between py-3">
-        <div className="flex flex-col items-center gap-3">
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => setOpen(true)}
-            title="Expandir barra lateral (Ctrl+B)"
-            className="size-8 text-primary hover:bg-accent"
-          >
-            <PanelLeftOpen className="size-4" />
-          </Button>
+      <div className="flex h-full w-full flex-col items-center justify-between">
+        <div className="flex w-full flex-col items-center">
+          {/* Header colapsado con línea alineada exactamente al topbar (h-12) */}
+          <div className="flex h-12 w-full shrink-0 items-center justify-center border-b border-border bg-card/80">
+            <span className="font-mono text-[11px] font-extrabold text-primary select-none">
+              {syncGroupA.book.slice(0, 3)}
+            </span>
+          </div>
 
-          <Button
-            variant="secondary"
-            size="icon-sm"
-            onClick={() => setOpen(true)}
-            title={`Libro actual: ${syncGroupA.book} ${syncGroupA.chapter}`}
-            className="size-8 font-mono text-[11px] font-bold text-primary shadow-xs"
-          >
-            {syncGroupA.book.slice(0, 3)}
-          </Button>
+          {/* Acciones directas */}
+          <div className="flex flex-col items-center gap-3 py-3">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => setOpen(true)}
+              title="Ver canon bíblico completo"
+              className="size-8 text-muted-foreground hover:text-foreground"
+            >
+              <BookOpen className="size-4" />
+            </Button>
 
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => setOpen(true)}
-            title="Ver canon bíblico completo"
-            className="size-8 text-muted-foreground hover:text-foreground"
-          >
-            <BookOpen className="size-4" />
-          </Button>
-
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => setOpen(true)}
-            title="Módulos bíblicos instalados"
-            className="size-8 text-muted-foreground hover:text-foreground"
-          >
-            <Layers className="size-4" />
-          </Button>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => setOpen(true)}
+              title="Módulos bíblicos instalados"
+              className="size-8 text-muted-foreground hover:text-foreground"
+            >
+              <Layers className="size-4" />
+            </Button>
+          </div>
         </div>
 
-        <div className="flex flex-col items-center gap-2">
+        <div className="flex flex-col items-center gap-2 pb-3">
           <Button
             variant="ghost"
             size="icon-sm"
@@ -327,30 +342,107 @@ export function PanelLeftNavigation() {
   // MODO EXPANDIDO: vista completa con filtros y acordeones
   return (
     <>
-      <SidebarHeader className="border-b border-border bg-card/60 px-3 py-2.5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <BookOpen className="size-4 text-primary" />
-            <span className="text-xs font-bold uppercase tracking-wider text-foreground">
-              Biblioteca & Canon
-            </span>
-          </div>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCatalogOpen(true)}
-            className="h-6 gap-1 px-2 text-[10px] font-bold text-primary border-primary/30 hover:bg-primary/10"
-            title="Abrir Catálogo y Tienda de Módulos Remotos"
-          >
-            <Globe2 className="size-3" />
-            <span>Tienda</span>
-          </Button>
+      <SidebarHeader className="h-12 border-b border-border bg-card/80 px-3.5 flex flex-row items-center justify-between">
+        <div className="flex items-center gap-2">
+          <BookOpen className="size-4 text-primary" />
+          <span className="text-xs font-bold uppercase tracking-wider text-foreground">
+            Biblioteca & Canon
+          </span>
         </div>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setCatalogOpen(true)}
+          className="h-6 gap-1 px-2 text-[10px] font-bold text-primary border-primary/30 hover:bg-primary/10"
+          title="Abrir Catálogo y Tienda de Módulos Remotos"
+        >
+          <Globe2 className="size-3" />
+          <span>Tienda</span>
+        </Button>
       </SidebarHeader>
 
       <SidebarContent className="p-2 space-y-3">
-        {/* Grupo de Navegación Canónica */}
+        {/* Grupo 1: Versiones Bíblicas en Lectura */}
+        <SidebarGroup>
+          <div className="flex items-center justify-between px-1 mb-1">
+            <SidebarGroupLabel
+              className="cursor-pointer select-none gap-1.5 font-bold uppercase tracking-wider text-[10px] text-muted-foreground hover:text-foreground"
+              onClick={() => setReaderVersionsOpen((o) => !o)}
+            >
+              <ChevronDown
+                className={cn("size-3.5 transition-transform duration-200", !readerVersionsOpen && "-rotate-90")}
+              />
+              Versiones en Lectura
+            </SidebarGroupLabel>
+            <span className="text-[10px] font-mono text-primary font-semibold">
+              {activeModules.length} activas
+            </span>
+          </div>
+
+          {readerVersionsOpen && (
+            <SidebarGroupContent className="space-y-1.5">
+              <div className="grid grid-cols-1 gap-1">
+                {bibleModules.map((m) => {
+                  const active = activeModules.includes(m.id);
+                  const lang = LANG_BADGES[m.language] ?? {
+                    label: m.language,
+                    bg: "bg-muted text-muted-foreground border-border",
+                  };
+                  return (
+                    <button
+                      key={m.id}
+                      onClick={() => toggleModule(m.id)}
+                      className={cn(
+                        "flex w-full items-center justify-between rounded-lg border px-2.5 py-1.5 text-xs transition-all text-left",
+                        active
+                          ? "border-primary/50 bg-primary/10 text-foreground font-semibold shadow-2xs"
+                          : "border-border/60 bg-card/60 text-muted-foreground hover:bg-accent/60 hover:text-foreground",
+                      )}
+                    >
+                      <div className="flex items-center gap-2 truncate">
+                        <span
+                          className={cn(
+                            "flex size-4 shrink-0 items-center justify-center rounded-sm border transition-colors",
+                            active
+                              ? "bg-primary border-primary text-primary-foreground"
+                              : "border-border bg-background",
+                          )}
+                        >
+                          {active && <Check className="size-3 stroke-[3]" />}
+                        </span>
+                        <div className="truncate">
+                          <div className="flex items-center gap-1.5">
+                            <span className="truncate">{m.id}</span>
+                            <span
+                              className={cn(
+                                "rounded border px-1 py-0.2 text-[9px] font-mono font-medium",
+                                lang.bg,
+                              )}
+                            >
+                              {lang.label}
+                            </span>
+                          </div>
+                          <p className="truncate text-[10px] font-normal text-muted-foreground">
+                            {m.name}
+                          </p>
+                        </div>
+                      </div>
+                      <span
+                        className={cn(
+                          "size-1.5 rounded-full shrink-0",
+                          active ? "bg-primary" : "bg-muted-foreground/30",
+                        )}
+                      />
+                    </button>
+                  );
+                })}
+              </div>
+            </SidebarGroupContent>
+          )}
+        </SidebarGroup>
+
+        {/* Grupo 2: Canon Bíblico */}
         <SidebarGroup>
           <div className="flex items-center justify-between px-1 mb-1">
             <SidebarGroupLabel
@@ -419,7 +511,7 @@ export function PanelLeftNavigation() {
               </div>
 
               {/* Lista de libros */}
-              <div className="max-h-[38vh] overflow-y-auto pr-0.5 space-y-0.5 scrollbar-thin">
+              <div className="max-h-[32vh] overflow-y-auto pr-0.5 space-y-0.5 scrollbar-thin">
                 {modules === null ? (
                   <div className="space-y-2 p-2">
                     <Skeleton className="h-6 w-full" />
@@ -448,7 +540,127 @@ export function PanelLeftNavigation() {
           )}
         </SidebarGroup>
 
-        {/* Grupo de Módulos Instalados */}
+        {/* Grupo 3: Opciones y Herramientas del Lector */}
+        <SidebarGroup>
+          <div className="flex items-center justify-between px-1 mb-1">
+            <SidebarGroupLabel
+              className="cursor-pointer select-none gap-1.5 font-bold uppercase tracking-wider text-[10px] text-muted-foreground hover:text-foreground"
+              onClick={() => setReaderOptionsOpen((o) => !o)}
+            >
+              <ChevronDown
+                className={cn("size-3.5 transition-transform duration-200", !readerOptionsOpen && "-rotate-90")}
+              />
+              Ajustes de Lector
+            </SidebarGroupLabel>
+            <SlidersHorizontal className="size-3 text-muted-foreground" />
+          </div>
+
+          {readerOptionsOpen && (
+            <SidebarGroupContent className="space-y-2 rounded-lg border border-border/70 bg-muted/20 p-2.5 text-xs">
+              {/* Disposición: Interlineal / Columnas */}
+              <div className="space-y-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Disposición de Texto
+                </span>
+                <div className="grid grid-cols-2 gap-1">
+                  <button
+                    onClick={() => setReaderLayout("interleaved")}
+                    className={cn(
+                      "flex items-center justify-center gap-1.5 rounded-md border py-1.5 text-xs transition-all",
+                      readerLayout === "interleaved"
+                        ? "border-primary bg-primary text-primary-foreground font-semibold shadow-2xs"
+                        : "border-border bg-card text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    <Rows3 className="size-3.5" />
+                    <span>Interlineal</span>
+                  </button>
+                  <button
+                    onClick={() => setReaderLayout("columns")}
+                    className={cn(
+                      "flex items-center justify-center gap-1.5 rounded-md border py-1.5 text-xs transition-all",
+                      readerLayout === "columns"
+                        ? "border-primary bg-primary text-primary-foreground font-semibold shadow-2xs"
+                        : "border-border bg-card text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    <Columns3 className="size-3.5" />
+                    <span>Paralelo</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Toggles Strongs y Morfología */}
+              <div className="space-y-1 border-t border-border/50 pt-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Herramientas Exegéticas
+                </span>
+                <div className="space-y-1">
+                  <button
+                    onClick={() => setShowStrongs(!showStrongs)}
+                    className={cn(
+                      "flex w-full items-center justify-between rounded-md border px-2 py-1.5 transition-all text-xs",
+                      showStrongs
+                        ? "border-primary/40 bg-accent/60 text-foreground font-semibold"
+                        : "border-border bg-card text-muted-foreground",
+                    )}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <Tag className={cn("size-3.5", showStrongs ? "text-primary" : "text-muted-foreground")} />
+                      <span>Números Strong</span>
+                    </div>
+                    <span className="text-[10px] font-mono text-primary font-bold">
+                      {showStrongs ? "ON" : "OFF"}
+                    </span>
+                  </button>
+
+                  <button
+                    onClick={() => setShowMorphology(!showMorphology)}
+                    className={cn(
+                      "flex w-full items-center justify-between rounded-md border px-2 py-1.5 transition-all text-xs",
+                      showMorphology
+                        ? "border-primary/40 bg-accent/60 text-foreground font-semibold"
+                        : "border-border bg-card text-muted-foreground",
+                    )}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <Type className={cn("size-3.5", showMorphology ? "text-primary" : "text-muted-foreground")} />
+                      <span>Códigos Morfológicos</span>
+                    </div>
+                    <span className="text-[10px] font-mono text-primary font-bold">
+                      {showMorphology ? "ON" : "OFF"}
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Tamaño de Fuente */}
+              <div className="space-y-1 border-t border-border/50 pt-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Tamaño de Tipografía
+                </span>
+                <div className="grid grid-cols-4 gap-1">
+                  {(["sm", "base", "lg", "xl"] as const).map((size) => (
+                    <button
+                      key={size}
+                      onClick={() => setFontSize(size)}
+                      className={cn(
+                        "rounded border py-1 text-center font-mono text-xs transition-all",
+                        fontSize === size
+                          ? "border-primary bg-primary text-primary-foreground font-bold shadow-2xs"
+                          : "border-border bg-card text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      {size === "sm" ? "A-" : size === "base" ? "A" : size === "lg" ? "A+" : "A++"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </SidebarGroupContent>
+          )}
+        </SidebarGroup>
+
+        {/* Grupo 4: Gestor de Módulos Instalados */}
         <SidebarGroup>
           <div className="flex items-center justify-between px-1 mb-1">
             <SidebarGroupLabel

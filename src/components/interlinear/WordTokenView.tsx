@@ -73,12 +73,12 @@ export const WordTokenView = memo(function WordTokenView({
         {token.text}
       </span>
       {withLabels && showStrongs && token.strongId && (
-        <span className="block mt-0.5 text-center text-[10px] font-mono font-semibold tracking-tighter text-primary opacity-90 leading-none">
+        <span className="hidden sm:block mt-0.5 text-center text-[10px] font-mono font-semibold tracking-tighter text-primary opacity-90 leading-none">
           {token.strongId.replace(/^[GH]/, "")}
         </span>
       )}
       {withLabels && showMorphology && token.morphCode && (
-        <span className="block mt-0.5 text-center text-[9px] font-sans text-muted-foreground/80 leading-none">
+        <span className="hidden sm:block mt-0.5 text-center text-[9px] font-sans text-muted-foreground/80 leading-none">
           {token.morphCode.split("-").pop()}
         </span>
       )}
