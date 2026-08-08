@@ -150,11 +150,13 @@ export function PanelRightAnalysis() {
   // Al cambiar de versículo, vaciar el borrador del editor para no guardar
   // contenido en la referencia equivocada.
   useEffect(() => {
-    editor?.commands.setContent("");
+    if (editor && !editor.isDestroyed) {
+      editor.commands.setContent("");
+    }
   }, [verseId, editor]);
 
   const saveNote = async () => {
-    if (!editor) return;
+    if (!editor || editor.isDestroyed) return;
     const html = editor.getHTML();
     if (html === "<p></p>" || html.trim() === "") return;
     await addNote({
@@ -164,7 +166,9 @@ export function PanelRightAnalysis() {
       updated_at: new Date().toISOString(),
     });
     await refreshNotes();
-    editor.commands.setContent("");
+    if (!editor.isDestroyed) {
+      editor.commands.setContent("");
+    }
   };
 
   const handleDeleteNote = async (id?: number) => {
@@ -406,7 +410,7 @@ export function PanelRightAnalysis() {
           </div>
 
           {/* Barra de herramientas TipTap */}
-          {editor && (
+          {editor && !editor.isDestroyed && (
             <div className="flex flex-wrap items-center gap-0.5 rounded-lg border border-border bg-muted/40 p-1">
               <Button
                 variant={editor.isActive("bold") ? "secondary" : "ghost"}
