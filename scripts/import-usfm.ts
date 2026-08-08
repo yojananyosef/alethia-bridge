@@ -131,6 +131,13 @@ function parseBookFile(content: string, bookId: string, emit: (v: VerseData) => 
 
     const vMatch = line.match(V_MARKER);
     if (vMatch) {
+      // Algunos libros (Abdías, Filemón) omiten el \c 1: capítulo 1 implícito.
+      if (chapter === null) {
+        chapter = 1;
+        used.clear();
+        nextFree = 1;
+        shift = 0;
+      }
       openVerse(vMatch[1], vMatch[2] ?? "");
       continue;
     }
@@ -202,8 +209,10 @@ function importModule(sourcePath: string, moduleId: string, flags: Record<string
 
   const tx = db.transaction(() => {
     for (const [name, content] of files) {
-      const id = name.match(/(?:^|[^0-9])([A-Z0-9]{3})[^.]*\.usfm$/i);
-      const code = id ? id[1].toUpperCase() : "";
+      // El código autoritativo es el \id del propio archivo; el nombre de archivo
+      // solo es un respaldo (los nombres localizados no siempre son USFX).
+      const idLine = content.match(/^\\id\s+(\S+)/m);
+      const code = (idLine ? idLine[1] : name.match(/(?:^|[^0-9])([A-Z0-9]{3})[^.]*\.usfm$/i)?.[1] ?? "").toUpperCase();
       const bookId = bookIdByUsfxCode(code) ?? LXX_BOOK_CODES[code];
       if (!bookId) {
         skipped.push(code || name);
