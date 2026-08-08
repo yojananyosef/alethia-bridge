@@ -1,6 +1,6 @@
 import path from "node:path";
 import Database from "better-sqlite3";
-import { MODULES_DIR, getLexiconDb, getModuleDb, normalizeText } from "../db/sqlite.ts";
+import { MODULES_DIR, getLexiconDb, getModuleDb, normalizeText, resolveModuleDbPath } from "../db/sqlite.ts";
 import { getModule, listModules } from "../modules/registry.ts";
 import type {
   BibleLanguage,
@@ -414,7 +414,7 @@ export function readCommentary(book: string, chapterRaw: string): {
     try {
       // Lectura readonly sin tocar la caché: getModuleDb recrearía el archivo
       // si otro proceso lo está desinstalando justo en este instante.
-      const db = new Database(path.join(MODULES_DIR, `${info.id}.db`), { readonly: true });
+      const db = new Database(resolveModuleDbPath(info.id), { readonly: true });
       try {
         const rows = db
           .prepare(
@@ -456,7 +456,7 @@ export function readCrossReferences(
   for (const info of listModules()) {
     if (info.type !== "crossref" || info.status !== "installed") continue;
     try {
-      const db = new Database(path.join(MODULES_DIR, `${info.id}.db`), { readonly: true });
+      const db = new Database(resolveModuleDbPath(info.id), { readonly: true });
       try {
         const hasTable = db
           .prepare(`SELECT 1 FROM sqlite_master WHERE type='table' AND name='referencias_cruzadas'`)
