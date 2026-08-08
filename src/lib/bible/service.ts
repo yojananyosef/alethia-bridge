@@ -414,7 +414,11 @@ interface CommentaryRow {
 
 /** Comentarios instalados (módulos type=commentary, p. ej. Torres Amat)
  *  para un capítulo: notas por versículo, en orden del capítulo. */
-export function readCommentary(book: string, chapterRaw: string): {
+export function readCommentary(
+  book: string,
+  chapterRaw: string,
+  installedFilter?: string[] | null,
+): {
   commentary: CommentaryModule[];
   durationMs: number;
 } {
@@ -424,13 +428,7 @@ export function readCommentary(book: string, chapterRaw: string): {
     bookId === "John" ? "Jn" : bookId === "Jn" ? "John" : bookId === "Gen" ? "Genesis" : bookId === "Genesis" ? "Gen" : bookId;
   const commentary: CommentaryModule[] = [];
 
-  const candidateModules = [...listModules()];
-  for (const defaultId of ["TA"]) {
-    if (!candidateModules.some((m) => m.id === defaultId)) {
-      const info = readModuleInfo(defaultId);
-      if (info) candidateModules.push(info);
-    }
-  }
+  const candidateModules = [...listModules(installedFilter)];
 
   for (const info of candidateModules) {
     if (info.type !== "commentary" || info.status !== "installed") continue;
@@ -469,19 +467,14 @@ export function readCrossReferences(
   book: string,
   chapterRaw: string,
   verseRaw?: string | null,
+  installedFilter?: string[] | null,
 ): { crossref: import("../../types/bible.ts").CrossRefModule[]; durationMs: number } {
   const t0 = performance.now();
   const { book: bookId, chapter } = sanitizeReference(book, chapterRaw);
   const verse = verseRaw ? Number.parseInt(verseRaw, 10) || null : null;
   const crossref: import("../../types/bible.ts").CrossRefModule[] = [];
 
-  const candidateModules = [...listModules()];
-  for (const defaultId of ["TSK"]) {
-    if (!candidateModules.some((m) => m.id === defaultId)) {
-      const info = readModuleInfo(defaultId);
-      if (info) candidateModules.push(info);
-    }
-  }
+  const candidateModules = [...listModules(installedFilter)];
 
   const altBookId =
     bookId === "John" ? "Jn" : bookId === "Jn" ? "John" : bookId === "Gen" ? "Genesis" : bookId === "Genesis" ? "Gen" : bookId;

@@ -6,12 +6,14 @@ import {
   readCommentary,
   readCrossReferences,
 } from "../../../../src/lib/bible/service.ts";
+import { getInstalledIdsFromRequest } from "../../../../src/lib/modules/registry.ts";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request): Promise<Response> {
   try {
     const url = new URL(request.url);
+    const installedFilter = getInstalledIdsFromRequest(request);
     const name = url.searchParams.get("name");
     if (name) {
       const nombres = getProperNames(
@@ -26,6 +28,7 @@ export async function GET(request: Request): Promise<Response> {
         url.searchParams.get("book") ?? "",
         url.searchParams.get("chapter") ?? "",
         url.searchParams.get("verse"),
+        installedFilter,
       );
       return Response.json(data);
     }
@@ -34,6 +37,7 @@ export async function GET(request: Request): Promise<Response> {
       const data = readCommentary(
         url.searchParams.get("book") ?? "",
         url.searchParams.get("chapter") ?? "",
+        installedFilter,
       );
       return Response.json(data);
     }

@@ -34,13 +34,14 @@ import type { UserNote } from "../lib/db/dexie-user-db";
 import type { CommentaryModule, CrossRefModule, LexiconEntry, MorphologyAnalysis, ProperName } from "../types/bible";
 import { cn } from "../lib/utils";
 
-async function fetchJson<T>(url: string): Promise<T> {
-  const res = await fetch(url, { cache: "no-store" });
+async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(url, { cache: "no-store", ...init });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return (await res.json()) as T;
 }
 
 export function PanelRightAnalysis() {
+  const installedModules = useExegesisStore((s) => s.installedModules);
   const activeLexiconTerm = useExegesisStore((s) => s.activeLexiconTerm);
   const setActiveLexiconTerm = useExegesisStore((s) => s.setActiveLexiconTerm);
   const syncGroupA = useExegesisStore((s) => s.syncGroupA);
@@ -132,8 +133,13 @@ export function PanelRightAnalysis() {
     void Promise.resolve().then(() => {
       if (!cancelled) setCommentary([]);
     });
+    const headers: Record<string, string> = {};
+    if (installedModules && installedModules.length > 0) {
+      headers["x-installed-modules"] = installedModules.join(",");
+    }
     fetchJson<{ commentary: CommentaryModule[] }>(
       `/api/bible/read?commentary=1&book=${encodeURIComponent(syncGroupA.book)}&chapter=${syncGroupA.chapter}`,
+      { headers },
     )
       .then((b) => {
         if (!cancelled) setCommentary(b.commentary);
@@ -144,7 +150,7 @@ export function PanelRightAnalysis() {
     return () => {
       cancelled = true;
     };
-  }, [syncGroupA.book, syncGroupA.chapter]);
+  }, [syncGroupA.book, syncGroupA.chapter, installedModules]);
 
   // Referencias cruzadas del versículo activo (módulos type=crossref, p. ej. TSK)
   useEffect(() => {
@@ -152,8 +158,13 @@ export function PanelRightAnalysis() {
     void Promise.resolve().then(() => {
       if (!cancelled) setCrossRefs([]);
     });
+    const headers: Record<string, string> = {};
+    if (installedModules && installedModules.length > 0) {
+      headers["x-installed-modules"] = installedModules.join(",");
+    }
     fetchJson<{ crossref: CrossRefModule[] }>(
       `/api/bible/read?crossref=1&book=${encodeURIComponent(syncGroupA.book)}&chapter=${syncGroupA.chapter}&verse=${syncGroupA.verse}`,
+      { headers },
     )
       .then((b) => {
         if (!cancelled) setCrossRefs(b.crossref ?? []);
@@ -164,7 +175,7 @@ export function PanelRightAnalysis() {
     return () => {
       cancelled = true;
     };
-  }, [syncGroupA.book, syncGroupA.chapter, syncGroupA.verse]);
+  }, [syncGroupA.book, syncGroupA.chapter, syncGroupA.verse, installedModules]);
 
   const editor = useEditor({
     extensions: [StarterKit],
