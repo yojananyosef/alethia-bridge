@@ -335,10 +335,11 @@ export function PanelCenterReader() {
   }, []);
 
   const load = useCallback(async () => {
+    const activeStr = activeModules.length > 0 ? activeModules.join(",") : "RV1909";
     const params = new URLSearchParams({
       book: syncGroupA.book,
       chapter: String(syncGroupA.chapter),
-      modules: activeModules.join(","),
+      modules: activeStr,
     });
     try {
       const res = await fetch(`/api/bible/read?${params}`, { cache: "no-store" });
@@ -405,7 +406,22 @@ export function PanelCenterReader() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const verses = data?.modules[0]?.verses ?? [];
+  // Extraer versículos disponibles en este capítulo desde cualquier módulo activo con texto
+  const verses = useMemo(() => {
+    const withVerses = data?.modules.find((m) => m.verses && m.verses.length > 0);
+    if (withVerses) return withVerses.verses;
+
+    // Si varios módulos tienen versículos parciales, unificar por número de versículo
+    const verseMap = new Map<number, { verse: number; text: string }>();
+    for (const mod of data?.modules ?? []) {
+      for (const v of mod.verses) {
+        if (!verseMap.has(v.verse)) {
+          verseMap.set(v.verse, { verse: v.verse, text: v.text });
+        }
+      }
+    }
+    return Array.from(verseMap.values()).sort((a, b) => a.verse - b.verse);
+  }, [data]);
 
   const sizeClass =
     fontSize === "sm"
