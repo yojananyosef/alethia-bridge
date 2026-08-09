@@ -1,5 +1,12 @@
-import Database from "better-sqlite3";
-import { ensureModuleDbReady, getLexiconDb, getModuleDb, normalizeText, resolveModuleDbPath } from "../db/sqlite.ts";
+import {
+  createDatabase,
+  ensureModuleDbReady,
+  getLexiconDb,
+  getModuleDb,
+  normalizeText,
+  resolveModuleDbPath,
+  type Database,
+} from "../db/sqlite.ts";
 import { getModule, getPrimaryBibleModule, listModules, readModuleInfo } from "../modules/registry.ts";
 import type {
   BibleLanguage,
@@ -434,7 +441,7 @@ export function readCommentary(
     if (info.type !== "commentary" || info.status !== "installed") continue;
     try {
       const dbPath = resolveModuleDbPath(info.id);
-      const db = new Database(dbPath, { readonly: true, fileMustExist: true });
+      const db = createDatabase(dbPath, { readonly: true });
       try {
         const rows = db
           .prepare(
@@ -482,7 +489,7 @@ export function readCrossReferences(
   for (const info of candidateModules) {
     if (info.type !== "crossref" || info.status !== "installed") continue;
     try {
-      const db = new Database(resolveModuleDbPath(info.id), { readonly: true, fileMustExist: true });
+      const db = createDatabase(resolveModuleDbPath(info.id), { readonly: true });
       try {
         const hasTable = db
           .prepare(`SELECT 1 FROM sqlite_master WHERE type='table' AND name='referencias_cruzadas'`)

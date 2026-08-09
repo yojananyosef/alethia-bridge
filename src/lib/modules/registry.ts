@@ -1,7 +1,14 @@
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import Database from "better-sqlite3";
-import { MODULES_DIR, TMP_MODULES_DIR, ensureModuleDbReady, getWritableModulesDir, resolveModuleDbPath } from "../db/sqlite.ts";
+import {
+  MODULES_DIR,
+  TMP_MODULES_DIR,
+  createDatabase,
+  ensureModuleDbReady,
+  getWritableModulesDir,
+  resolveModuleDbPath,
+  type Database,
+} from "../db/sqlite.ts";
 import type { ModuleBook, ModuleInfo, ModuleManifest } from "../../types/module.ts";
 
 function getStateFile(): string {
@@ -25,15 +32,15 @@ function writeState(state: ModuleState): void {
 }
 
 /** Abre un módulo en solo lectura (sin WAL; copia a temp si hay WAL activo). */
-function openReadOnly(moduleId: string): Database.Database | null {
+function openReadOnly(moduleId: string): Database | null {
   const file = resolveModuleDbPath(moduleId);
   if (!existsSync(file)) return null;
   try {
-    const db = new Database(file, { readonly: true });
+    const db = createDatabase(file, { readonly: true });
     return db;
   } catch {
     try {
-      const db = new Database(file);
+      const db = createDatabase(file);
       return db;
     } catch {
       return null;

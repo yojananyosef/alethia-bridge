@@ -1,7 +1,6 @@
 import { copyFileSync, existsSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { strFromU8, unzipSync, zipSync, type Zippable } from "fflate";
-import { Database } from "bun:sqlite";
 import {
   MODULES_DIR,
   getWritableModulesDir,
@@ -9,6 +8,8 @@ import {
   initModuleMeta,
   writeManifestMeta,
   closeModuleDb,
+  createDatabase,
+  type Database,
 } from "../db/sqlite.ts";
 import type { ModuleManifest } from "../../types/module.ts";
 import { validateManifest, validateDependencies, clearModuleInfoCache } from "./registry.ts";
@@ -58,7 +59,7 @@ export async function packageModuleToZip(moduleId: string): Promise<Uint8Array> 
 
   let manifest: ModuleManifest;
   try {
-    const srcDb = new Database(src);
+    const srcDb = createDatabase(src);
     srcDb.exec("PRAGMA wal_checkpoint(TRUNCATE);");
     manifest = readManifestFromDb(srcDb);
     srcDb.close();
@@ -115,7 +116,7 @@ export function installModuleZip(
 
   try {
     writeFileSync(tmp, dbBytes);
-    const db = new Database(tmp);
+    const db = createDatabase(tmp);
     initModuleMeta(db);
     // El manifest.json del paquete es la fuente de verdad → reescribir meta
     writeManifestMeta(db, {

@@ -1,7 +1,18 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { Database } from "bun:sqlite";
 import { unzipSync } from "fflate";
+import type BetterSqlite3 from "better-sqlite3";
+
+export type Database = BetterSqlite3.Database;
+
+export function createDatabase(file: string, options?: { readonly?: boolean }): Database {
+  if (typeof (globalThis as any).Bun !== "undefined") {
+    const { Database: BunDb } = require("bun:sqlite");
+    return new BunDb(file, options);
+  }
+  const BetterSqlite3Constructor = require("better-sqlite3");
+  return new BetterSqlite3Constructor(file, options);
+}
 
 export const MODULES_DIR = path.join(process.cwd(), "data", "modules");
 export const TMP_MODULES_DIR = path.join(process.env.TMPDIR || "/tmp", "alethia-modules");
@@ -269,7 +280,7 @@ function openDb(file: string, readonly = false): Database {
 
   let db: Database;
   try {
-    db = new Database(file, { readonly });
+    db = createDatabase(file, { readonly });
     if (!readonly) {
       try {
         db.exec("PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL; PRAGMA busy_timeout = 5000; PRAGMA foreign_keys = ON;");
@@ -278,7 +289,7 @@ function openDb(file: string, readonly = false): Database {
       }
     }
   } catch {
-    db = new Database(file, { readonly: true });
+    db = createDatabase(file, { readonly: true });
   }
   return db;
 }

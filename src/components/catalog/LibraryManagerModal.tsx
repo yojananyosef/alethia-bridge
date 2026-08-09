@@ -12,6 +12,7 @@ import {
   Globe2,
   Info,
   Layers,
+  Library,
   Loader2,
   Package,
   PackageCheck,
@@ -34,6 +35,7 @@ import {
   DialogTitle,
 } from "../ui/dialog";
 import type { CatalogItem, CatalogResponse, InstallRemoteResponse } from "../../types/catalog";
+import type { ModuleType } from "../../types/module";
 import { cn } from "../../lib/utils";
 import { useExegesisStore } from "../../store/useExegesisStore";
 
@@ -43,12 +45,13 @@ interface LibraryManagerModalProps {
   onModuleChanged?: () => void;
 }
 
-const TYPE_CONFIG = {
+const TYPE_CONFIG: Record<ModuleType, { label: string; icon: any; color: string }> = {
   bible: { label: "Biblia", icon: BookOpen, color: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30" },
   lexicon: { label: "Léxico / Strong", icon: BookMarked, color: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30" },
   commentary: { label: "Comentario", icon: Layers, color: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30" },
   crossref: { label: "Ref. Cruzadas", icon: Tag, color: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30" },
   devotion: { label: "Devocional", icon: Sparkles, color: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30" },
+  dictionary: { label: "Diccionario", icon: Library, color: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/30" },
 };
 
 const LANG_CONFIG: Record<string, { label: string; flag: string }> = {

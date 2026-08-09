@@ -2,7 +2,7 @@ import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { rmSync } from "node:fs";
 import path from "node:path";
-import Database from "better-sqlite3";
+import { createDatabase as Database } from "../src/lib/db/sqlite.ts";
 import { zipSync } from "fflate";
 import { GET as readGET } from "../app/api/bible/read/route.ts";
 import { GET as searchGET } from "../app/api/bible/search/route.ts";
