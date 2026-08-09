@@ -7,6 +7,8 @@ import type { ReaderFontSize, ReaderLayout, SyncGroupReference, ThemeId } from "
 interface ExegesisState {
   /** Indica si el store ya fue hidratado desde localStorage para evitar flashes en SSR. */
   _hasHydrated: boolean;
+  /** Contador de revisión para invalidar cachés y forzar reactividad en cambios de módulos. */
+  modulesRevision: number;
   /** ID de alineación resaltado al hacer hover (resalte interlineal instantáneo). */
   hoveredAlignmentId: string | null;
   /** Término léxico seleccionado para el panel de análisis lateral (strong_id o lema). */
@@ -41,6 +43,7 @@ interface ExegesisActions {
   toggleModule: (moduleId: string) => void;
   addInstalledModule: (moduleId: string) => void;
   removeInstalledModule: (moduleId: string) => void;
+  bumpModulesRevision: () => void;
   setReaderLayout: (layout: ReaderLayout) => void;
   setFontSize: (size: ReaderFontSize) => void;
   setShowStrongs: (show: boolean) => void;
@@ -101,6 +104,7 @@ export const useExegesisStore = create<ExegesisStore>()(
   persist(
     (set) => ({
       _hasHydrated: typeof window !== "undefined",
+      modulesRevision: 0,
       hoveredAlignmentId: null,
       activeLexiconTerm: null,
       syncGroupA: initial.syncGroupA,
@@ -115,9 +119,17 @@ export const useExegesisStore = create<ExegesisStore>()(
       isRightSidebarOpen: initial.isRightSidebarOpen,
 
       setHasHydrated: (val) => set({ _hasHydrated: val }),
+      bumpModulesRevision: () => set((s) => ({ modulesRevision: s.modulesRevision + 1 })),
       setHoveredAlignment: (id) => set({ hoveredAlignmentId: id }),
       setActiveLexiconTerm: (term) => set({ activeLexiconTerm: term, isRightSidebarOpen: true }),
-      setSyncGroupA: (ref) => set({ syncGroupA: ref }),
+      setSyncGroupA: (ref) =>
+        set((s) => ({
+          syncGroupA: {
+            book: ref.book || s.syncGroupA.book,
+            chapter: Number(ref.chapter) || 1,
+            verse: ref.verse !== undefined ? Number(ref.verse) : 1,
+          },
+        })),
       setActiveTheme: (theme) => set({ activeTheme: theme }),
       setReaderLayout: (layout) => set({ readerLayout: layout }),
       setFontSize: (fontSize) => set({ fontSize }),
@@ -136,10 +148,12 @@ export const useExegesisStore = create<ExegesisStore>()(
             }
             return {
               activeModules: state.activeModules.filter((m) => m !== moduleId),
+              modulesRevision: state.modulesRevision + 1,
             };
           }
           return {
             activeModules: [...state.activeModules, moduleId],
+            modulesRevision: state.modulesRevision + 1,
           };
         }),
       addInstalledModule: (moduleId) =>
@@ -147,19 +161,31 @@ export const useExegesisStore = create<ExegesisStore>()(
           const list = state.installedModules.includes(moduleId)
             ? state.installedModules
             : [...state.installedModules, moduleId];
+          let active = state.activeModules;
+          if (!active.includes(moduleId)) {
+            active = [...active, moduleId];
+          }
           syncInstalledCookie(list);
-          return { installedModules: list };
+          return {
+            installedModules: list,
+            activeModules: active,
+            modulesRevision: state.modulesRevision + 1,
+          };
         }),
       removeInstalledModule: (moduleId) =>
         set((state) => {
           const list = state.installedModules.filter((m) => m !== moduleId);
           let active = state.activeModules.filter((m) => m !== moduleId);
-          if (active.length === 0) {
+          if (active.length === 0 && list.length > 0) {
             const nextBible = list.find((id) => id !== moduleId && id !== "lexicon");
-            active = [nextBible ?? "RV1909"];
+            if (nextBible) active = [nextBible];
           }
           syncInstalledCookie(list);
-          return { installedModules: list, activeModules: active };
+          return {
+            installedModules: list,
+            activeModules: active,
+            modulesRevision: state.modulesRevision + 1,
+          };
         }),
     }),
     {

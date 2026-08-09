@@ -161,20 +161,31 @@ export function PanelLeftNavigation() {
     setShowStrongs,
     showMorphology,
     setShowMorphology,
+    modulesRevision,
   } = useExegesisStore();
 
   const refresh = useCallback(async () => {
     try {
-      setModules(await fetchModules(installedModules));
+      const data = await fetchModules(installedModules);
+      setModules(data);
       setError(null);
+
+      // Auto-activación si hay biblias instaladas pero ninguna activa en el lector
+      const bibles = data.filter((m) => m.type === "bible" && m.status === "installed");
+      if (bibles.length > 0) {
+        const hasActive = bibles.some((b) => activeModules.includes(b.id));
+        if (!hasActive) {
+          toggleModule(bibles[0].id);
+        }
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
-  }, [installedModules]);
+  }, [installedModules, activeModules, toggleModule]);
 
   useEffect(() => {
     void Promise.resolve().then(refresh);
-  }, [refresh]);
+  }, [refresh, modulesRevision]);
 
   useEffect(() => {
     if (syncGroupA.book) {
@@ -184,22 +195,18 @@ export function PanelLeftNavigation() {
     }
   }, [syncGroupA.book]);
 
-  const primary = useMemo(
-    () =>
-      (modules ?? [])
-        .filter((m) => m.type === "bible" && m.status === "installed" && (m.books?.length ?? 0) > 0)
-        .sort((a, b) => (b.books?.length ?? 0) - (a.books?.length ?? 0))[0] ?? null,
-    [modules],
-  );
-
   const bibleModules = useMemo(
     () => (modules ?? []).filter((m) => m.type === "bible" && m.status === "installed"),
     [modules],
   );
 
   const filteredBooks = useMemo(() => {
-    const all = primary?.books ?? [];
-    return all.filter((b) => {
+    return CANON.map((c, idx) => ({
+      id: c.id,
+      nombre: c.nombre,
+      capitulos: c.capitulos,
+      orden: idx + 1,
+    })).filter((b) => {
       const matchesText =
         searchFilter === "" ||
         b.nombre.toLowerCase().includes(searchFilter.toLowerCase()) ||
@@ -210,7 +217,7 @@ export function PanelLeftNavigation() {
       if (testamentFilter === "NT") return NT_BOOK_IDS.has(b.id);
       return true;
     });
-  }, [primary, searchFilter, testamentFilter]);
+  }, [searchFilter, testamentFilter]);
 
   const install = async (file: File) => {
     setBusy(true);

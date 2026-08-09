@@ -44,12 +44,16 @@ async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 export function PanelRightAnalysis() {
-  const installedModules = useExegesisStore((s) => s.installedModules);
-  const activeLexiconTerm = useExegesisStore((s) => s.activeLexiconTerm);
-  const setActiveLexiconTerm = useExegesisStore((s) => s.setActiveLexiconTerm);
-  const toggleRightSidebar = useExegesisStore((s) => s.toggleRightSidebar);
-  const syncGroupA = useExegesisStore((s) => s.syncGroupA);
-  const setSyncGroupA = useExegesisStore((s) => s.setSyncGroupA);
+  const {
+    installedModules,
+    activeLexiconTerm,
+    setActiveLexiconTerm,
+    toggleRightSidebar,
+    syncGroupA,
+    setSyncGroupA,
+    modulesRevision,
+    bumpModulesRevision,
+  } = useExegesisStore();
   const verseId = useMemo(
     () => `${syncGroupA.book} ${syncGroupA.chapter}:${syncGroupA.verse}`,
     [syncGroupA],
@@ -173,7 +177,7 @@ export function PanelRightAnalysis() {
     return () => {
       cancelled = true;
     };
-  }, [syncGroupA.book, syncGroupA.chapter, installedModules]);
+  }, [syncGroupA.book, syncGroupA.chapter, installedModules, modulesRevision]);
 
   // Referencias cruzadas del versículo activo (módulos type=crossref, p. ej. TSK)
   useEffect(() => {
@@ -198,7 +202,7 @@ export function PanelRightAnalysis() {
     return () => {
       cancelled = true;
     };
-  }, [syncGroupA.book, syncGroupA.chapter, syncGroupA.verse, installedModules]);
+  }, [syncGroupA.book, syncGroupA.chapter, syncGroupA.verse, installedModules, modulesRevision]);
 
   const editor = useEditor({
     extensions: [StarterKit],

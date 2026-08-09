@@ -158,6 +158,60 @@ export function readChapter(book: string, chapterRaw: string, modulesRaw: string
     }
   }
 
+  // Si todos los módulos activos devuelven 0 versículos para este libro (ej: WLC en el NT o SBLGNT en el AT)
+  const totalVerses = modules.reduce((acc, m) => acc + m.verses.length, 0);
+  if (totalVerses === 0) {
+    const allInstalledBibles = listModules()
+      .filter((m) => m.type === "bible" && m.status === "installed" && !moduleIds.includes(m.id));
+    for (const alt of allInstalledBibles) {
+      try {
+        const altDb = getModuleDb(alt.id);
+        const altVerses = altDb
+          .prepare(
+            `SELECT id_versiculo, libro_id, capitulo, versiculo, texto_plano
+             FROM versiculos WHERE libro_id = ? AND capitulo = ? ORDER BY versiculo`,
+          )
+          .all(bookId, chapter) as VerseRow[];
+        if (altVerses.length > 0) {
+          const placeholders = altVerses.map(() => "?").join(",");
+          const tokens = altDb
+            .prepare(
+              `SELECT id_palabra, id_versiculo, posicion, texto_superficie, lema, strong_id, morph_code, alineacion_id
+               FROM palabras_interlineal WHERE id_versiculo IN (${placeholders}) ORDER BY id_versiculo, posicion`,
+            )
+            .all(...altVerses.map((v) => v.id_versiculo)) as TokenRow[];
+          const tokensByVerse = new Map<number, TokenRow[]>();
+          for (const t of tokens) {
+            const list = tokensByVerse.get(t.id_versiculo) ?? [];
+            list.push(t);
+            tokensByVerse.set(t.id_versiculo, list);
+            alignmentGroups.add(t.alineacion_id);
+          }
+          const versePayloads: VersePayload[] = altVerses.map((v) => ({
+            reference: `${v.libro_id} ${v.capitulo}:${v.versiculo}`,
+            book: v.libro_id,
+            chapter: v.capitulo,
+            verse: v.versiculo,
+            text: v.texto_plano,
+            tokens: (tokensByVerse.get(v.id_versiculo) ?? []).map((t) => ({
+              id: t.id_palabra,
+              position: t.posicion,
+              text: t.texto_superficie,
+              lemma: t.lema,
+              strongId: t.strong_id,
+              morphCode: t.morph_code,
+              alignmentId: t.strong_id
+                ? `${v.libro_id}${v.capitulo}:${v.versiculo}:s${canonicalStrong(t.strong_id)}`
+                : t.alineacion_id,
+            })),
+          }));
+          modules.push({ moduleId: alt.id, language: moduleLanguage(alt.id), verses: versePayloads });
+          break;
+        }
+      } catch {}
+    }
+  }
+
   return {
     modules,
     alignmentGroups: [...alignmentGroups].sort(),

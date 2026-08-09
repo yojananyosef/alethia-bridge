@@ -324,6 +324,8 @@ export function PanelCenterReader() {
     activeHighlightColor,
     setActiveHighlightColor,
     setActiveLexiconTerm,
+    modulesRevision,
+    bumpModulesRevision,
   } = useExegesisStore();
 
   const [data, setData] = useState<ReadResponse | null>(null);
@@ -341,21 +343,29 @@ export function PanelCenterReader() {
     void fetch("/api/modules", { cache: "no-store", headers })
       .then((r) => r.json())
       .then((d: { modules?: ModuleInfo[] }) => {
-        if (!cancelled) setModules(d.modules ?? []);
+        if (!cancelled) {
+          const list = d.modules ?? [];
+          setModules(list);
+          const bibles = list.filter((m) => m.type === "bible" && m.status === "installed");
+          if (bibles.length > 0 && activeModules.length === 0) {
+            toggleModule(bibles[0].id);
+          }
+        }
       })
       .catch(() => {});
     return () => {
       cancelled = true;
     };
-  }, [installedModules]);
+  }, [installedModules, modulesRevision, activeModules.length, toggleModule]);
 
   const load = useCallback(async () => {
-    const activeStr = activeModules.length > 0 ? activeModules.join(",") : "RV1909";
+    const activeStr = activeModules.length > 0 ? activeModules.join(",") : "";
     const params = new URLSearchParams({
       book: syncGroupA.book,
       chapter: String(syncGroupA.chapter),
-      modules: activeStr,
     });
+    if (activeStr) params.set("modules", activeStr);
+
     const headers: Record<string, string> = {};
     if (installedModules && installedModules.length > 0) {
       headers["x-installed-modules"] = installedModules.join(",");
@@ -373,7 +383,7 @@ export function PanelCenterReader() {
 
   useEffect(() => {
     void Promise.resolve().then(load);
-  }, [load]);
+  }, [load, modulesRevision]);
 
   // Navegación por capítulos (Anterior / Siguiente)
   const currentCanonBook = useMemo(
@@ -713,7 +723,10 @@ export function PanelCenterReader() {
       <LibraryManagerModal
         open={catalogOpen}
         onOpenChange={setCatalogOpen}
-        onModuleChanged={load}
+        onModuleChanged={() => {
+          bumpModulesRevision();
+          void load();
+        }}
       />
     </main>
   );

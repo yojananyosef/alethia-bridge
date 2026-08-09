@@ -189,23 +189,11 @@ export function getInstalledIdsFromRequest(request?: Request): string[] | null {
   return null;
 }
 
-/** Escanea módulos instalados (filtrando por los IDs instalados por el usuario si se proveen). */
+/** Escanea módulos instalados (descubre disco y une con filtro de cliente si se provee). */
 export function listModules(installedFilter?: string[] | null): ModuleInfo[] {
   const moduleMap = new Map<string, ModuleInfo>();
 
-  // Si el cliente especifica los módulos que tiene instalados
-  if (installedFilter && installedFilter.length > 0) {
-    for (const id of installedFilter) {
-      const cleanId = id.trim();
-      if (!cleanId) continue;
-      ensureModuleDbReady(cleanId);
-      const info = readModuleInfo(cleanId);
-      if (info) moduleMap.set(cleanId, info);
-    }
-    return Array.from(moduleMap.values()).sort((a, b) => a.id.localeCompare(b.id));
-  }
-
-  const dirs = [MODULES_DIR, TMP_MODULES_DIR];
+  const dirs = [MODULES_DIR, getWritableModulesDir(), TMP_MODULES_DIR];
   for (const dir of dirs) {
     if (!existsSync(dir)) continue;
     try {
@@ -216,6 +204,17 @@ export function listModules(installedFilter?: string[] | null): ModuleInfo[] {
         if (info) moduleMap.set(moduleId, info);
       }
     } catch {}
+  }
+
+  // Si el cliente especifica IDs adicionales en installedFilter que puedan requerir carga
+  if (installedFilter && installedFilter.length > 0) {
+    for (const id of installedFilter) {
+      const cleanId = id.trim();
+      if (!cleanId || moduleMap.has(cleanId)) continue;
+      ensureModuleDbReady(cleanId);
+      const info = readModuleInfo(cleanId);
+      if (info) moduleMap.set(cleanId, info);
+    }
   }
 
   return Array.from(moduleMap.values()).sort((a, b) => a.id.localeCompare(b.id));
