@@ -271,20 +271,32 @@ export async function downloadAndInstallRemoteModule(
     }
   }
 
-  // 3. Obtener el binario .abmod
+  // 3. Obtener el binario .abmod (probar downloadUrl + CDN de respaldo raw.githubusercontent.com)
   let zipBytes: Uint8Array | null = null;
 
+  const candidateUrls: string[] = [];
   if (downloadUrl && /^https?:\/\//.test(downloadUrl)) {
+    candidateUrls.push(downloadUrl);
+  }
+
+  // URLs de respaldo oficiales en GitHub raw
+  const rawBase = "https://raw.githubusercontent.com/yojananyosef/alethia-modules/main/binaries";
+  candidateUrls.push(`${rawBase}/${moduleId}-${version}.abmod`);
+  candidateUrls.push(`${rawBase}/${moduleId}-1.0.0.abmod`);
+  candidateUrls.push(`${rawBase}/${moduleId}.abmod`);
+
+  for (const url of Array.from(new Set(candidateUrls))) {
     try {
-      const res = await fetch(downloadUrl, {
+      const res = await fetch(url, {
         headers: { "User-Agent": "Alethia-Bridge/0.1.0" },
-        signal: AbortSignal.timeout(15000),
+        signal: AbortSignal.timeout(25000),
       });
       if (res.ok) {
         zipBytes = new Uint8Array(await res.arrayBuffer());
+        break;
       }
     } catch {
-      // Si falla la descarga remota (ej: offline/dev), usar fallback local
+      // Continuar con el siguiente candidato
     }
   }
 
