@@ -1,7 +1,7 @@
-import { existsSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { strFromU8, unzipSync, zipSync, type Zippable } from "fflate";
-import Database from "better-sqlite3";
+import { Database } from "bun:sqlite";
 import {
   MODULES_DIR,
   getWritableModulesDir,
@@ -17,7 +17,7 @@ const MANIFEST_FILE = "manifest.json";
 const MODULE_DB_FILE = "module.db";
 
 /** Lee el manifest almacenado en la tabla meta de una base. */
-function readManifestFromDb(db: Database.Database): ModuleManifest {
+function readManifestFromDb(db: Database): ModuleManifest {
   const meta: Record<string, string> = {};
   for (const row of db.prepare(`SELECT clave, valor FROM meta`).all() as {
     clave: string;
@@ -58,10 +58,11 @@ export async function packageModuleToZip(moduleId: string): Promise<Uint8Array> 
 
   let manifest: ModuleManifest;
   try {
-    const srcDb = new Database(src, { readonly: true });
+    const srcDb = new Database(src);
+    srcDb.exec("PRAGMA wal_checkpoint(TRUNCATE);");
     manifest = readManifestFromDb(srcDb);
-    await srcDb.backup(tmp);
     srcDb.close();
+    copyFileSync(src, tmp);
   } catch (err) {
     if (existsSync(tmp)) rmSync(tmp);
     throw err;
@@ -132,7 +133,7 @@ export function installModuleZip(
       strongScheme: manifest.strongScheme ?? "",
       bookOrder: (manifest.bookOrder ?? []).join(","),
     });
-    db.pragma("journal_mode = DELETE");
+    db.exec("PRAGMA journal_mode = DELETE;");
     db.close();
     if (existsSync(target)) {
       try {

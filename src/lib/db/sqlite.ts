@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import Database from "better-sqlite3";
+import { Database } from "bun:sqlite";
 import { unzipSync } from "fflate";
 
 export const MODULES_DIR = path.join(process.cwd(), "data", "modules");
@@ -260,22 +260,19 @@ export function normalizeText(text: string): string {
   return text.normalize("NFD").replace(/\p{M}/gu, "").normalize("NFC").toLowerCase();
 }
 
-const moduleCache = new Map<string, Database.Database>();
+const moduleCache = new Map<string, Database>();
 
-function openDb(file: string, readonly = false): Database.Database {
+function openDb(file: string, readonly = false): Database {
   try {
     mkdirSync(path.dirname(file), { recursive: true });
   } catch {}
 
-  let db: Database.Database;
+  let db: Database;
   try {
     db = new Database(file, { readonly });
     if (!readonly) {
       try {
-        db.pragma("journal_mode = WAL");
-        db.pragma("synchronous = NORMAL");
-        db.pragma("busy_timeout = 5000");
-        db.pragma("foreign_keys = ON");
+        db.exec("PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL; PRAGMA busy_timeout = 5000; PRAGMA foreign_keys = ON;");
       } catch {
         // En entornos serverless donde el FS es read-only, continuar en modo lectura
       }
@@ -286,7 +283,7 @@ function openDb(file: string, readonly = false): Database.Database {
   return db;
 }
 
-export function getModuleDb(moduleId: string): Database.Database {
+export function getModuleDb(moduleId: string): Database {
   let db = moduleCache.get(moduleId);
   if (!db) {
     db = openDb(resolveModuleDbPath(moduleId));
@@ -295,7 +292,7 @@ export function getModuleDb(moduleId: string): Database.Database {
   return db;
 }
 
-export function getLexiconDb(): Database.Database {
+export function getLexiconDb(): Database {
   return getModuleDb("lexicon");
 }
 
@@ -309,7 +306,7 @@ export function closeModuleDb(moduleId: string): void {
 }
 
 /** Escribe el manifest en la tabla meta (claves con prefijo "manifest_"). */
-export function writeManifestMeta(db: Database.Database, manifest: Record<string, string>): void {
+export function writeManifestMeta(db: Database, manifest: Record<string, string>): void {
   const ins = db.prepare(
     `INSERT INTO meta (clave, valor) VALUES (?, ?)
      ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor`,
@@ -324,7 +321,7 @@ export function writeManifestMeta(db: Database.Database, manifest: Record<string
 
 /** Pobla la tabla canónica de libros. */
 export function writeBooks(
-  db: Database.Database,
+  db: Database,
   books: { id: string; nombre: string; capitulos: number; orden: number }[],
 ): void {
   db.exec("DELETE FROM libros;");
@@ -336,18 +333,18 @@ export function writeBooks(
 }
 
 /** Crea las tablas meta/libros en un módulo (idempotente). */
-export function initModuleMeta(db: Database.Database): void {
+export function initModuleMeta(db: Database): void {
   db.exec(SCHEMA_MODULE_META);
 }
 
-export function initModuleDb(moduleId: string): Database.Database {
+export function initModuleDb(moduleId: string): Database {
   const db = getModuleDb(moduleId);
   db.exec(SCHEMA_VERSICULOS);
   db.exec(FTS_TRIGGERS);
   return db;
 }
 
-export function initLexiconDb(): Database.Database {
+export function initLexiconDb(): Database {
   const db = getLexiconDb();
   db.exec(SCHEMA_LEXICON);
   return db;
