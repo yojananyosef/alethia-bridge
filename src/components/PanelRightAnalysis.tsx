@@ -13,6 +13,7 @@ import {
   Globe2,
   Italic,
   Layers,
+  Library,
   List,
   ListOrdered,
   MousePointerClick,
@@ -28,10 +29,12 @@ import { Button } from "../components/ui/button";
 import { SidebarContent, SidebarHeader } from "../components/ui/sidebar";
 import { Skeleton } from "../components/ui/skeleton";
 import { LibraryManagerModal } from "./catalog/LibraryManagerModal";
+import { DictionaryModal } from "./dictionary/DictionaryModal";
 import { useExegesisStore } from "../store/useExegesisStore";
 import { addNote, deleteNote, notesForVerse } from "../lib/db/dexie-user-db";
 import type { UserNote } from "../lib/db/dexie-user-db";
 import type { CommentaryModule, CrossRefModule, LexiconEntry, MorphologyAnalysis, ProperName } from "../types/bible";
+import type { DictionarySearchResult } from "../types/dictionary";
 import { cn } from "../lib/utils";
 
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
@@ -58,6 +61,9 @@ export function PanelRightAnalysis() {
   const [notes, setNotes] = useState<UserNote[]>([]);
   const [commentary, setCommentary] = useState<CommentaryModule[]>([]);
   const [crossRefs, setCrossRefs] = useState<CrossRefModule[]>([]);
+  const [relatedDictEntries, setRelatedDictEntries] = useState<DictionarySearchResult[]>([]);
+  const [dictModalOpen, setDictModalOpen] = useState(false);
+  const [dictInitialTerm, setDictInitialTerm] = useState<string | null>(null);
   const [copiedLexicon, setCopiedLexicon] = useState(false);
   const [catalogModalOpen, setCatalogModalOpen] = useState(false);
   const [commentaryMode, setCommentaryMode] = useState<"verse" | "chapter">("verse");
@@ -102,6 +108,17 @@ export function PanelRightAnalysis() {
       .catch(() => {
         if (!cancelled) setMorph(null);
       });
+
+    fetchJson<{ results?: DictionarySearchResult[] }>(
+      `/api/dictionary?q=${encodeURIComponent(activeLexiconTerm)}`,
+    )
+      .then((b) => {
+        if (!cancelled) setRelatedDictEntries(b.results?.slice(0, 2) ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setRelatedDictEntries([]);
+      });
+
     return () => {
       cancelled = true;
     };
@@ -425,6 +442,38 @@ export function PanelRightAnalysis() {
           </div>
         )}
 
+        {/* Entrada Relacionada de Diccionario Bíblico (Easton) */}
+        {relatedDictEntries.length > 0 && (
+          <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 shadow-xs space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
+                <Library className="size-3.5" />
+                <span className="text-xs font-bold">Diccionario Bíblico</span>
+              </div>
+              <Button
+                variant="ghost"
+                size="xs"
+                onClick={() => {
+                  setDictInitialTerm(relatedDictEntries[0].term);
+                  setDictModalOpen(true);
+                }}
+                className="h-6 text-[10px] font-semibold text-amber-600 dark:text-amber-400 hover:text-foreground gap-1"
+              >
+                <span>Ver artículo</span>
+                <ExternalLink className="size-2.5" />
+              </Button>
+            </div>
+
+            <div className="space-y-1">
+              <h4 className="text-xs font-bold text-foreground">{relatedDictEntries[0].term}</h4>
+              <p
+                className="text-[11px] text-muted-foreground leading-relaxed line-clamp-3"
+                dangerouslySetInnerHTML={{ __html: relatedDictEntries[0].snippet }}
+              />
+            </div>
+          </div>
+        )}
+
         {/* Comentario bíblico (módulos type=commentary, p. ej. Torres Amat) */}
         {commentary.length > 0 ? (
           commentary.map((c) => {
@@ -696,6 +745,12 @@ export function PanelRightAnalysis() {
       <LibraryManagerModal
         open={catalogModalOpen}
         onOpenChange={setCatalogModalOpen}
+      />
+
+      <DictionaryModal
+        open={dictModalOpen}
+        onOpenChange={setDictModalOpen}
+        initialTerm={dictInitialTerm}
       />
     </>
   );

@@ -376,7 +376,7 @@ export function PanelLeftNavigation() {
               Versiones en Lectura
             </SidebarGroupLabel>
             <span className="text-[10px] font-mono text-primary font-semibold">
-              {activeModules.length} activas
+              {bibleModules.filter((m) => activeModules.includes(m.id)).length} activas
             </span>
           </div>
 
@@ -785,7 +785,7 @@ export function PanelLeftNavigation() {
               <Sparkles className="size-3 animate-spin" /> Instalando paquete .abmod…
             </span>
           ) : (
-            <span>Alethia Bridge · SQLite FTS5 Engine</span>
+            <span>Alethia Bridge Pro · Exégesis & Estudio Bíblico</span>
           )}
         </p>
       </SidebarFooter>

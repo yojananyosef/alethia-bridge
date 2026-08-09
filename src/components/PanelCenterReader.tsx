@@ -7,12 +7,15 @@ import {
   Columns3,
   Copy,
   Check,
+  Globe2,
   Highlighter,
   Rows3,
+  Sparkles,
   Type,
   Tag,
   BookOpen,
 } from "lucide-react";
+import { LibraryManagerModal } from "./catalog/LibraryManagerModal";
 import { ToggleGroup, ToggleGroupItem } from "../components/ui/toggle-group";
 import { Button } from "../components/ui/button";
 import { useExegesisStore } from "../store/useExegesisStore";
@@ -326,6 +329,7 @@ export function PanelCenterReader() {
   const [data, setData] = useState<ReadResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [modules, setModules] = useState<ModuleInfo[]>([]);
+  const [catalogOpen, setCatalogOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -655,13 +659,30 @@ export function PanelCenterReader() {
           </div>
         ) : null}
 
-        {data && verses.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <BookOpen className="size-10 text-muted-foreground/40 mb-2" />
-            <p className="font-semibold text-foreground">Sin contenido para este capítulo</p>
-            <p className="text-xs text-muted-foreground mt-1 max-w-sm">
-              Los módulos activos no disponen del texto de {syncGroupA.book} {syncGroupA.chapter}. Prueba seleccionando otro módulo desde la cabecera.
-            </p>
+        {verses.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-20 px-4 text-center max-w-md mx-auto space-y-4">
+            <div className="size-16 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shadow-xs">
+              <BookOpen className="size-8" />
+            </div>
+            <div className="space-y-1.5">
+              <h3 className="text-lg font-bold text-foreground">
+                {modules.filter((m) => m.type === "bible" && m.status === "installed").length === 0
+                  ? "¡Bienvenido a Alethia Bridge!"
+                  : "Sin contenido para este capítulo"}
+              </h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                {modules.filter((m) => m.type === "bible" && m.status === "installed").length === 0
+                  ? "Aún no tienes ninguna versión bíblica instalada. Explora la biblioteca para instalar Reina-Valera 1909, Griego SBLGNT, Hebreo WLC y otros recursos exegéticos."
+                  : `Los módulos activos no disponen del texto de ${syncGroupA.book} ${syncGroupA.chapter}. Prueba seleccionando otro módulo desde la cabecera.`}
+              </p>
+            </div>
+            <Button
+              onClick={() => setCatalogOpen(true)}
+              className="gap-2 font-semibold shadow-md bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              <Globe2 className="size-4" />
+              <span>Explorar Biblioteca de Módulos</span>
+            </Button>
           </div>
         )}
 
@@ -688,6 +709,12 @@ export function PanelCenterReader() {
           />
         ))}
       </div>
+
+      <LibraryManagerModal
+        open={catalogOpen}
+        onOpenChange={setCatalogOpen}
+        onModuleChanged={load}
+      />
     </main>
   );
 }

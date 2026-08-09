@@ -104,56 +104,58 @@ export function readChapter(book: string, chapterRaw: string, modulesRaw: string
   const alignmentGroups = new Set<string>();
 
   for (const moduleId of moduleIds) {
-    const db = getModuleDb(moduleId);
-    const verses = db
-      .prepare(
-        `SELECT id_versiculo, libro_id, capitulo, versiculo, texto_plano
-         FROM versiculos WHERE libro_id = ? AND capitulo = ? ORDER BY versiculo`,
-      )
-      .all(bookId, chapter) as VerseRow[];
-
-    const tokensByVerse = new Map<number, TokenRow[]>();
-    if (verses.length > 0) {
-      const placeholders = verses.map(() => "?").join(",");
-      const tokens = db
+    try {
+      const db = getModuleDb(moduleId);
+      const verses = db
         .prepare(
-          `SELECT id_palabra, id_versiculo, posicion, texto_superficie, lema, strong_id, morph_code, alineacion_id
-           FROM palabras_interlineal WHERE id_versiculo IN (${placeholders}) ORDER BY id_versiculo, posicion`,
+          `SELECT id_versiculo, libro_id, capitulo, versiculo, texto_plano
+           FROM versiculos WHERE libro_id = ? AND capitulo = ? ORDER BY versiculo`,
         )
-        .all(...verses.map((v) => v.id_versiculo)) as TokenRow[];
-      for (const t of tokens) {
-        const list = tokensByVerse.get(t.id_versiculo) ?? [];
-        list.push(t);
-        tokensByVerse.set(t.id_versiculo, list);
-        alignmentGroups.add(t.alineacion_id);
+        .all(bookId, chapter) as VerseRow[];
+
+      const tokensByVerse = new Map<number, TokenRow[]>();
+      if (verses.length > 0) {
+        const placeholders = verses.map(() => "?").join(",");
+        const tokens = db
+          .prepare(
+            `SELECT id_palabra, id_versiculo, posicion, texto_superficie, lema, strong_id, morph_code, alineacion_id
+             FROM palabras_interlineal WHERE id_versiculo IN (${placeholders}) ORDER BY id_versiculo, posicion`,
+          )
+          .all(...verses.map((v) => v.id_versiculo)) as TokenRow[];
+        for (const t of tokens) {
+          const list = tokensByVerse.get(t.id_versiculo) ?? [];
+          list.push(t);
+          tokensByVerse.set(t.id_versiculo, list);
+          alignmentGroups.add(t.alineacion_id);
+        }
       }
+
+      const versePayloads: VersePayload[] = verses.map((v) => {
+        const tokens: WordToken[] = (tokensByVerse.get(v.id_versiculo) ?? []).map((t) => ({
+          id: t.id_palabra,
+          position: t.posicion,
+          text: t.texto_superficie,
+          lemma: t.lema,
+          strongId: t.strong_id,
+          morphCode: t.morph_code,
+          alignmentId: t.strong_id
+            ? `${v.libro_id}${v.capitulo}:${v.versiculo}:s${canonicalStrong(t.strong_id)}`
+            : t.alineacion_id,
+        }));
+        return {
+          reference: `${v.libro_id} ${v.capitulo}:${v.versiculo}`,
+          book: v.libro_id,
+          chapter: v.capitulo,
+          verse: v.versiculo,
+          text: v.texto_plano,
+          tokens,
+        };
+      });
+
+      modules.push({ moduleId, language: moduleLanguage(moduleId), verses: versePayloads });
+    } catch {
+      // Si el módulo no existe o no se puede cargar, se omite silenciosamente
     }
-
-    const versePayloads: VersePayload[] = verses.map((v) => {
-      const tokens: WordToken[] = (tokensByVerse.get(v.id_versiculo) ?? []).map((t) => ({
-        id: t.id_palabra,
-        position: t.posicion,
-        text: t.texto_superficie,
-        lemma: t.lema,
-        strongId: t.strong_id,
-        morphCode: t.morph_code,
-        // Alineación semántica: por strong_id canónico dentro del versículo (los tokens
-        // sin strong —artículos, conjunciones— caen a la alineación posicional).
-        alignmentId: t.strong_id
-          ? `${v.libro_id}${v.capitulo}:${v.versiculo}:s${canonicalStrong(t.strong_id)}`
-          : t.alineacion_id,
-      }));
-      return {
-        reference: `${v.libro_id} ${v.capitulo}:${v.versiculo}`,
-        book: v.libro_id,
-        chapter: v.capitulo,
-        verse: v.versiculo,
-        text: v.texto_plano,
-        tokens,
-      };
-    });
-
-    modules.push({ moduleId, language: moduleLanguage(moduleId), verses: versePayloads });
   }
 
   return {

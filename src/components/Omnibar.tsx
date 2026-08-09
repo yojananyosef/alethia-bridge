@@ -8,6 +8,7 @@ import {
   Compass,
   FileText,
   Globe2,
+  Library,
   Loader2,
   Moon,
   Search,
@@ -17,6 +18,8 @@ import {
 } from "lucide-react";
 import { LibraryManagerModal } from "./catalog/LibraryManagerModal";
 import { DevotionModal } from "./devotion/DevotionModal";
+import { DictionaryModal } from "./dictionary/DictionaryModal";
+import { PassageGuideModal } from "./guide/PassageGuideModal";
 import { useExegesisStore } from "../store/useExegesisStore";
 import type { SearchResponse, SearchResult, ThemeId } from "../types/bible";
 import type { ModuleInfo } from "../types/module";
@@ -32,6 +35,8 @@ export function Omnibar() {
   const [open, setOpen] = useState(false);
   const [catalogOpen, setCatalogOpen] = useState(false);
   const [devotionOpen, setDevotionOpen] = useState(false);
+  const [dictOpen, setDictOpen] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [modules, setModules] = useState<ModuleInfo[]>([]);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
@@ -381,6 +386,48 @@ export function Omnibar() {
               </Command.Item>
             </Command.Group>
 
+            {/* Acceso a Diccionario Bíblico Enciclopédico */}
+            <Command.Group heading="Diccionario & Enciclopedia Bíblica" className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-500">
+              <Command.Item
+                value="diccionario-biblico-easton-enciclopedia-topicos-articulos"
+                onSelect={() => {
+                  setOpen(false);
+                  setDictOpen(true);
+                }}
+                className="flex cursor-pointer items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground"
+              >
+                <div className="flex items-center gap-2.5">
+                  <Library className="size-4 text-amber-500" />
+                  <div>
+                    <span className="font-semibold text-foreground">Abrir Diccionario Bíblico (Easton)</span>
+                    <p className="text-[11px] text-muted-foreground">Casi 4.000 artículos sobre teología, arqueología, geografía y biografías</p>
+                  </div>
+                </div>
+                <kbd className="rounded border border-border bg-card px-1.5 py-0.5 text-[10px] font-mono">Diccionario</kbd>
+              </Command.Item>
+            </Command.Group>
+
+            {/* Acceso a Guía de Pasaje & Dossier Exegético */}
+            <Command.Group heading="Exégesis & Guía de Pasaje" className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-sky-500">
+              <Command.Item
+                value="guia-de-pasaje-dossier-exegetico-sintesis-versiculo"
+                onSelect={() => {
+                  setOpen(false);
+                  setGuideOpen(true);
+                }}
+                className="flex cursor-pointer items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground"
+              >
+                <div className="flex items-center gap-2.5">
+                  <Zap className="size-4 text-sky-500" />
+                  <div>
+                    <span className="font-semibold text-foreground">Abrir Guía de Pasaje (Dossier Exegético)</span>
+                    <p className="text-[11px] text-muted-foreground">Síntesis en 1 clic: Original + Comentarios + Referencias + Vocabulario</p>
+                  </div>
+                </div>
+                <kbd className="rounded border border-border bg-card px-1.5 py-0.5 text-[10px] font-mono">Guía de Pasaje</kbd>
+              </Command.Item>
+            </Command.Group>
+
             {/* Selector de Temas Visuales */}
             <Command.Group heading="Temas de Visualización" className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
               {THEMES.map((t) => {
@@ -433,6 +480,16 @@ export function Omnibar() {
       <DevotionModal
         open={devotionOpen}
         onOpenChange={setDevotionOpen}
+      />
+
+      <DictionaryModal
+        open={dictOpen}
+        onOpenChange={setDictOpen}
+      />
+
+      <PassageGuideModal
+        open={guideOpen}
+        onOpenChange={setGuideOpen}
       />
     </>
   );

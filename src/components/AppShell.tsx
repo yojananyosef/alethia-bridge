@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { PanelRight, Sparkles } from "lucide-react";
+import { Library, PanelRight, Sparkles, Zap } from "lucide-react";
 import { Sidebar, SidebarProvider, SidebarInset, SidebarTrigger } from "../components/ui/sidebar";
 import { Button } from "../components/ui/button";
 import { Omnibar } from "./Omnibar";
@@ -11,6 +11,8 @@ import { PanelRightAnalysis } from "./PanelRightAnalysis";
 import { ThemeApplier } from "./ThemeApplier";
 import { ThemeSwitcher } from "./ThemeSwitcher";
 import { DevotionModal } from "./devotion/DevotionModal";
+import { DictionaryModal } from "./dictionary/DictionaryModal";
+import { PassageGuideModal } from "./guide/PassageGuideModal";
 import { useExegesisStore } from "../store/useExegesisStore";
 import { cn } from "../lib/utils";
 
@@ -34,6 +36,8 @@ import { useIsMobile } from "../hooks/use-mobile";
 export function AppShell() {
   const isMobile = useIsMobile();
   const [devotionOpen, setDevotionOpen] = useState(false);
+  const [dictOpen, setDictOpen] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
   const {
     isRightSidebarOpen,
     toggleRightSidebar,
@@ -68,6 +72,34 @@ export function AppShell() {
 
           {/* Acciones del Top Bar */}
           <div className="flex items-center gap-1.5">
+            {/* Botón Guía de Pasaje & Dossier Exegético */}
+            <Button
+              variant={guideOpen ? "secondary" : "ghost"}
+              size="icon-sm"
+              onClick={() => setGuideOpen(true)}
+              title="Guía de Pasaje & Dossier Exegético (1 Clic)"
+              className={cn(
+                "relative size-8 transition-colors text-sky-500 hover:text-sky-600 dark:text-sky-400 hover:bg-sky-500/10",
+                guideOpen && "bg-sky-500/15 border-sky-500/30",
+              )}
+            >
+              <Zap className="size-4" />
+            </Button>
+
+            {/* Botón Diccionario Bíblico Enciclopédico */}
+            <Button
+              variant={dictOpen ? "secondary" : "ghost"}
+              size="icon-sm"
+              onClick={() => setDictOpen(true)}
+              title="Diccionario Bíblico Enciclopédico (Easton)"
+              className={cn(
+                "relative size-8 transition-colors text-amber-500 hover:text-amber-600 dark:text-amber-400 hover:bg-amber-500/10",
+                dictOpen && "bg-amber-500/15 border-amber-500/30",
+              )}
+            >
+              <Library className="size-4" />
+            </Button>
+
             {/* Botón Devocional Diario */}
             <Button
               variant={devotionOpen ? "secondary" : "ghost"}
@@ -104,6 +136,12 @@ export function AppShell() {
 
         {/* Modal de Lectura Devocional Diaria */}
         <DevotionModal open={devotionOpen} onOpenChange={setDevotionOpen} />
+
+        {/* Modal de Diccionario Bíblico Enciclopédico */}
+        <DictionaryModal open={dictOpen} onOpenChange={setDictOpen} />
+
+        {/* Modal de Guía de Pasaje & Dossier Exegético */}
+        <PassageGuideModal open={guideOpen} onOpenChange={setGuideOpen} />
 
         {/* Área de trabajo: Lector central + Panel derecho integrado */}
         <div className="relative flex min-w-0 flex-1 overflow-hidden">
