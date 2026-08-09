@@ -273,36 +273,36 @@ export function LibraryManagerModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl h-[88vh] flex flex-col p-0 overflow-hidden bg-card text-foreground">
+      <DialogContent className="w-[96vw] sm:w-full max-w-5xl h-[92vh] sm:h-[88vh] flex flex-col p-0 overflow-hidden bg-card text-foreground rounded-2xl border border-border shadow-2xl">
         {/* Cabecera Principal */}
-        <DialogHeader className="px-6 pt-5 pb-4 border-b border-border bg-card/80 backdrop-blur-md">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-2.5">
-              <div className="size-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shadow-xs">
-                <Package className="size-5" />
+        <DialogHeader className="px-4 sm:px-6 pt-4 sm:pt-5 pb-3 sm:pb-4 border-b border-border bg-card/80 backdrop-blur-md">
+          <div className="flex items-center justify-between gap-2 sm:gap-4 pr-6 sm:pr-8">
+            <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+              <div className="size-8 sm:size-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shadow-xs shrink-0">
+                <Package className="size-4 sm:size-5" />
               </div>
-              <div>
-                <DialogTitle className="text-lg font-bold tracking-tight">
-                  Biblioteca & Catálogo de Recursos Remotos
+              <div className="min-w-0">
+                <DialogTitle className="text-base sm:text-lg font-bold tracking-tight truncate">
+                  Biblioteca & Catálogo Remoto
                 </DialogTitle>
-                <DialogDescription className="text-xs text-muted-foreground">
-                  Instala con 1 clic Biblias con Strongs, Textos Originales, Léxicos y Comentarios con verificación de integridad.
+                <DialogDescription className="hidden sm:block text-xs text-muted-foreground truncate">
+                  Instala con 1 clic Biblias con Strongs, Textos Originales, Léxicos y Comentarios con verificación SHA-256.
                 </DialogDescription>
               </div>
             </div>
 
             {/* Acciones de Cabecera */}
-            <div className="flex items-center gap-2 mr-8">
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => void loadCatalog(true)}
                 disabled={loading}
-                className="h-8 gap-1.5 text-xs font-semibold"
+                className="h-8 px-2 sm:px-3 gap-1 sm:gap-1.5 text-xs font-semibold"
                 title="Actualizar catálogo remoto"
               >
                 <RefreshCw className={cn("size-3.5", loading && "animate-spin text-primary")} />
-                <span>Refrescar</span>
+                <span className="hidden sm:inline">Refrescar</span>
               </Button>
 
               <Button
@@ -310,11 +310,12 @@ export function LibraryManagerModal({
                 size="sm"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={Boolean(installingId)}
-                className="h-8 gap-1.5 text-xs font-semibold shadow-xs"
+                className="h-8 px-2 sm:px-3 gap-1 sm:gap-1.5 text-xs font-semibold shadow-xs"
                 title="Instalar archivo .abmod local"
               >
                 <Upload className="size-3.5" />
-                <span>Subir .abmod</span>
+                <span className="hidden sm:inline">Subir .abmod</span>
+                <span className="inline sm:hidden">.abmod</span>
               </Button>
 
               <input
@@ -331,34 +332,34 @@ export function LibraryManagerModal({
             </div>
           </div>
 
-          {/* Tarjetas de Estadísticas Rápidas */}
-          <div className="mt-3.5 grid grid-cols-4 gap-2.5">
-            <div className="rounded-xl border border-border/80 bg-muted/20 px-3 py-2 flex items-center justify-between">
-              <div>
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground block">
+          {/* Tarjetas de Estadísticas Rápidas: 2x2 en móvil, 4 en desktop */}
+          <div className="mt-2.5 sm:mt-3.5 grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2.5">
+            <div className="rounded-xl border border-border/80 bg-muted/20 px-2.5 sm:px-3 py-1.5 sm:py-2 flex items-center justify-between">
+              <div className="min-w-0">
+                <span className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-muted-foreground block truncate">
                   Disponibles
                 </span>
-                <span className="text-sm font-bold text-foreground">{totalCount} módulos</span>
+                <span className="text-xs sm:text-sm font-bold text-foreground truncate block">{totalCount} módulos</span>
               </div>
-              <Globe2 className="size-4 text-primary/70" />
+              <Globe2 className="size-3.5 sm:size-4 text-primary/70 shrink-0 ml-1" />
             </div>
 
-            <div className="rounded-xl border border-border/80 bg-muted/20 px-3 py-2 flex items-center justify-between">
-              <div>
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground block">
+            <div className="rounded-xl border border-border/80 bg-muted/20 px-2.5 sm:px-3 py-1.5 sm:py-2 flex items-center justify-between">
+              <div className="min-w-0">
+                <span className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-muted-foreground block truncate">
                   Instalados
                 </span>
-                <span className="text-sm font-bold text-foreground">{installedCount} en SQLite WAL</span>
+                <span className="text-xs sm:text-sm font-bold text-foreground truncate block">{installedCount} en SQLite</span>
               </div>
-              <PackageCheck className="size-4 text-emerald-500" />
+              <PackageCheck className="size-3.5 sm:size-4 text-emerald-500 shrink-0 ml-1" />
             </div>
 
-            <div className="rounded-xl border border-border/80 bg-muted/20 px-3 py-2 flex items-center justify-between">
-              <div>
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground block">
-                  Actualizaciones
+            <div className="rounded-xl border border-border/80 bg-muted/20 px-2.5 sm:px-3 py-1.5 sm:py-2 flex items-center justify-between">
+              <div className="min-w-0">
+                <span className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-muted-foreground block truncate">
+                  Updates
                 </span>
-                <span className="text-sm font-bold text-foreground">
+                <span className="text-xs sm:text-sm font-bold text-foreground truncate block">
                   {updateCount > 0 ? (
                     <span className="text-amber-500 font-extrabold">{updateCount} pendientes</span>
                   ) : (
@@ -366,49 +367,49 @@ export function LibraryManagerModal({
                   )}
                 </span>
               </div>
-              <ArrowDownToLine className={cn("size-4", updateCount > 0 ? "text-amber-500 animate-bounce" : "text-muted-foreground")} />
+              <ArrowDownToLine className={cn("size-3.5 sm:size-4 shrink-0 ml-1", updateCount > 0 ? "text-amber-500 animate-bounce" : "text-muted-foreground")} />
             </div>
 
-            <div className="rounded-xl border border-border/80 bg-muted/20 px-3 py-2 flex items-center justify-between">
-              <div>
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground block">
-                  Integridad SHA-256
+            <div className="rounded-xl border border-border/80 bg-muted/20 px-2.5 sm:px-3 py-1.5 sm:py-2 flex items-center justify-between">
+              <div className="min-w-0">
+                <span className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-muted-foreground block truncate">
+                  Seguridad
                 </span>
-                <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">Verificación Atómica</span>
+                <span className="text-[10px] sm:text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 truncate block">SHA-256 Verif.</span>
               </div>
-              <ShieldCheck className="size-4 text-emerald-500" />
+              <ShieldCheck className="size-3.5 sm:size-4 text-emerald-500 shrink-0 ml-1" />
             </div>
           </div>
         </DialogHeader>
 
         {/* Notificaciones y Estado de Progreso */}
         {installProgressText && (
-          <div className="bg-primary/10 border-b border-primary/20 px-6 py-2.5 flex items-center gap-3 animate-in fade-in-0">
-            <Loader2 className="size-4 text-primary animate-spin" />
-            <span className="text-xs font-semibold text-primary">{installProgressText}</span>
+          <div className="bg-primary/10 border-b border-primary/20 px-4 sm:px-6 py-2 sm:py-2.5 flex items-center gap-2 sm:gap-3 animate-in fade-in-0">
+            <Loader2 className="size-3.5 sm:size-4 text-primary animate-spin shrink-0" />
+            <span className="text-xs font-semibold text-primary truncate">{installProgressText}</span>
           </div>
         )}
 
         {notification && (
           <div
             className={cn(
-              "px-6 py-2.5 border-b text-xs font-semibold flex items-center justify-between animate-in fade-in-0",
+              "px-4 sm:px-6 py-2 sm:py-2.5 border-b text-xs font-semibold flex items-center justify-between gap-2 animate-in fade-in-0",
               notification.type === "success"
                 ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-600 dark:text-emerald-400"
                 : "bg-destructive/15 border-destructive/30 text-destructive",
             )}
           >
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 min-w-0">
               {notification.type === "success" ? (
                 <CheckCircle2 className="size-4 shrink-0 text-emerald-500" />
               ) : (
                 <Info className="size-4 shrink-0 text-destructive" />
               )}
-              <span>{notification.text}</span>
+              <span className="truncate">{notification.text}</span>
             </div>
             <button
               onClick={() => setNotification(null)}
-              className="p-1 hover:bg-black/10 rounded"
+              className="p-1 hover:bg-black/10 rounded shrink-0"
             >
               <X className="size-3.5" />
             </button>
@@ -416,13 +417,13 @@ export function LibraryManagerModal({
         )}
 
         {/* Barra de Filtros y Búsqueda */}
-        <div className="px-6 py-3 border-b border-border/60 bg-muted/10 flex flex-wrap items-center justify-between gap-3">
-          {/* Pestañas de Recursos */}
-          <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-xl border border-border/60 text-xs font-medium">
+        <div className="px-3.5 sm:px-6 py-2.5 sm:py-3 border-b border-border/60 bg-muted/10 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3">
+          {/* Pestañas de Recursos con scroll horizontal fluido en móvil */}
+          <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-xl border border-border/60 text-xs font-medium overflow-x-auto scrollbar-thin">
             <button
               onClick={() => setActiveTab("all")}
               className={cn(
-                "px-2.5 py-1 rounded-lg transition-all",
+                "px-2 sm:px-2.5 py-1 rounded-lg transition-all shrink-0 text-[11px] sm:text-xs",
                 activeTab === "all" ? "bg-card text-foreground font-bold shadow-xs" : "text-muted-foreground hover:text-foreground",
               )}
             >
@@ -431,7 +432,7 @@ export function LibraryManagerModal({
             <button
               onClick={() => setActiveTab("bible")}
               className={cn(
-                "px-2.5 py-1 rounded-lg transition-all",
+                "px-2 sm:px-2.5 py-1 rounded-lg transition-all shrink-0 text-[11px] sm:text-xs",
                 activeTab === "bible" ? "bg-card text-foreground font-bold shadow-xs" : "text-muted-foreground hover:text-foreground",
               )}
             >
@@ -440,16 +441,16 @@ export function LibraryManagerModal({
             <button
               onClick={() => setActiveTab("lexicon")}
               className={cn(
-                "px-2.5 py-1 rounded-lg transition-all",
+                "px-2 sm:px-2.5 py-1 rounded-lg transition-all shrink-0 text-[11px] sm:text-xs",
                 activeTab === "lexicon" ? "bg-card text-foreground font-bold shadow-xs" : "text-muted-foreground hover:text-foreground",
               )}
             >
-              Léxicos & Morfología
+              Léxicos
             </button>
             <button
               onClick={() => setActiveTab("commentary")}
               className={cn(
-                "px-2.5 py-1 rounded-lg transition-all",
+                "px-2 sm:px-2.5 py-1 rounded-lg transition-all shrink-0 text-[11px] sm:text-xs",
                 activeTab === "commentary" ? "bg-card text-foreground font-bold shadow-xs" : "text-muted-foreground hover:text-foreground",
               )}
             >
@@ -458,7 +459,7 @@ export function LibraryManagerModal({
             <button
               onClick={() => setActiveTab("installed")}
               className={cn(
-                "px-2.5 py-1 rounded-lg transition-all",
+                "px-2 sm:px-2.5 py-1 rounded-lg transition-all shrink-0 text-[11px] sm:text-xs",
                 activeTab === "installed" ? "bg-card text-foreground font-bold shadow-xs" : "text-muted-foreground hover:text-foreground",
               )}
             >
@@ -468,12 +469,12 @@ export function LibraryManagerModal({
               <button
                 onClick={() => setActiveTab("updates")}
                 className={cn(
-                  "px-2.5 py-1 rounded-lg transition-all flex items-center gap-1.5",
+                  "px-2 sm:px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 shrink-0 text-[11px] sm:text-xs",
                   activeTab === "updates" ? "bg-amber-500 text-white font-bold shadow-xs" : "text-amber-500 font-semibold hover:text-amber-600",
                 )}
               >
                 <span>Updates</span>
-                <span className="rounded-full bg-amber-600/30 px-1.5 py-0.2 text-[10px] font-mono">
+                <span className="rounded-full bg-amber-600/30 px-1 py-0.2 text-[9px] font-mono">
                   {updateCount}
                 </span>
               </button>
@@ -481,12 +482,12 @@ export function LibraryManagerModal({
           </div>
 
           {/* Filtros secundarios: Idioma y Búsqueda */}
-          <div className="flex items-center gap-2.5 flex-1 max-w-md justify-end">
-            <div className="flex items-center gap-1 bg-muted/40 p-0.5 rounded-lg border border-border/60 text-[11px] font-semibold">
+          <div className="flex items-center gap-2 sm:gap-2.5 w-full sm:w-auto sm:max-w-md justify-between sm:justify-end">
+            <div className="flex items-center gap-0.5 bg-muted/40 p-0.5 rounded-lg border border-border/60 text-[10px] sm:text-[11px] font-semibold shrink-0">
               <button
                 onClick={() => setLangFilter("ALL")}
                 className={cn(
-                  "px-2 py-1 rounded",
+                  "px-1.5 sm:px-2 py-1 rounded",
                   langFilter === "ALL" ? "bg-card text-foreground shadow-xs font-bold" : "text-muted-foreground hover:text-foreground",
                 )}
               >
@@ -495,7 +496,7 @@ export function LibraryManagerModal({
               <button
                 onClick={() => setLangFilter("es")}
                 className={cn(
-                  "px-2 py-1 rounded",
+                  "px-1.5 sm:px-2 py-1 rounded",
                   langFilter === "es" ? "bg-card text-foreground shadow-xs font-bold" : "text-muted-foreground hover:text-foreground",
                 )}
               >
@@ -504,7 +505,7 @@ export function LibraryManagerModal({
               <button
                 onClick={() => setLangFilter("el")}
                 className={cn(
-                  "px-2 py-1 rounded",
+                  "px-1.5 sm:px-2 py-1 rounded",
                   langFilter === "el" ? "bg-card text-foreground shadow-xs font-bold" : "text-muted-foreground hover:text-foreground",
                 )}
               >
@@ -513,7 +514,7 @@ export function LibraryManagerModal({
               <button
                 onClick={() => setLangFilter("he")}
                 className={cn(
-                  "px-2 py-1 rounded",
+                  "px-1.5 sm:px-2 py-1 rounded",
                   langFilter === "he" ? "bg-card text-foreground shadow-xs font-bold" : "text-muted-foreground hover:text-foreground",
                 )}
               >
@@ -521,14 +522,14 @@ export function LibraryManagerModal({
               </button>
             </div>
 
-            <div className="relative flex-1">
+            <div className="relative flex-1 min-w-0">
               <Search className="absolute left-2.5 top-2 size-3.5 text-muted-foreground" />
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Buscar módulo, autor, Strong…"
-                className="w-full rounded-lg border border-border bg-background py-1.5 pl-8 pr-2.5 text-xs text-foreground placeholder:text-muted-foreground/60 outline-none focus:border-primary transition-colors"
+                placeholder="Buscar módulo…"
+                className="w-full rounded-lg border border-border bg-background py-1.5 pl-8 pr-7 text-xs text-foreground placeholder:text-muted-foreground/60 outline-none focus:border-primary transition-colors"
               />
               {search && (
                 <button
@@ -543,7 +544,7 @@ export function LibraryManagerModal({
         </div>
 
         {/* Lista de Módulos */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-3.5 scrollbar-thin">
+        <div className="flex-1 overflow-y-auto p-3.5 sm:p-6 space-y-3 sm:space-y-3.5 scrollbar-thin">
           {loading && !catalog ? (
             <div className="flex flex-col items-center justify-center py-20 text-muted-foreground gap-3">
               <Loader2 className="size-8 text-primary animate-spin" />
@@ -568,7 +569,7 @@ export function LibraryManagerModal({
                 <div
                   key={m.id}
                   className={cn(
-                    "group relative rounded-2xl border p-4.5 transition-all shadow-xs",
+                    "group relative rounded-xl sm:rounded-2xl border p-3.5 sm:p-4.5 transition-all shadow-xs",
                     m.installStatus === "update_available"
                       ? "border-amber-500/40 bg-amber-500/5 hover:border-amber-500"
                       : m.installStatus === "installed"
@@ -576,10 +577,10 @@ export function LibraryManagerModal({
                       : "border-border/60 bg-card/60 hover:border-border hover:bg-card",
                   )}
                 >
-                  <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
                     {/* Detalles del Recurso */}
-                    <div className="space-y-1.5 flex-1 min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
+                    <div className="space-y-1.5 flex-1 min-w-0 w-full">
+                      <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                         <span className="font-mono text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-md border border-primary/20">
                           {m.id}
                         </span>
@@ -626,7 +627,7 @@ export function LibraryManagerModal({
                       </div>
 
                       {/* Metadatos secundarios: Autor, Tamaño, Dependencias */}
-                      <div className="flex flex-wrap items-center gap-3 pt-1 text-[11px] text-muted-foreground">
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1 text-[11px] text-muted-foreground">
                         {m.publisher && (
                           <span>
                             Publicador: <strong className="text-foreground/80 font-medium">{m.publisher}</strong>
@@ -681,15 +682,15 @@ export function LibraryManagerModal({
                       )}
                     </div>
 
-                    {/* Acciones del Módulo */}
-                    <div className="flex flex-row md:flex-col items-end gap-2 shrink-0">
+                    {/* Acciones del Módulo: full-width en móvil con separación limpia */}
+                    <div className="w-full sm:w-auto flex items-center justify-between sm:justify-end gap-2 pt-2.5 sm:pt-0 border-t sm:border-t-0 border-border/40 shrink-0">
                       {m.installStatus === "not_installed" ? (
                         <Button
                           variant="default"
                           size="sm"
                           disabled={Boolean(installingId)}
                           onClick={() => void handleInstallRemote(m)}
-                          className="h-8 gap-1.5 text-xs font-bold shadow-xs"
+                          className="h-8 gap-1.5 text-xs font-bold shadow-xs w-full sm:w-auto"
                         >
                           {isInstalling ? (
                             <>
@@ -704,13 +705,13 @@ export function LibraryManagerModal({
                           )}
                         </Button>
                       ) : m.installStatus === "update_available" ? (
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
                           <Button
                             variant="default"
                             size="sm"
                             disabled={Boolean(installingId)}
                             onClick={() => void handleInstallRemote(m, true)}
-                            className="h-8 gap-1.5 text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white shadow-xs"
+                            className="h-8 gap-1.5 text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white shadow-xs w-full sm:w-auto"
                           >
                             {isInstalling ? (
                               <>
@@ -726,31 +727,33 @@ export function LibraryManagerModal({
                           </Button>
                         </div>
                       ) : (
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
                           <div className="flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
                             <CheckCircle2 className="size-3.5" />
                             <span>Instalado</span>
                           </div>
 
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => void handleToggleModule(m)}
-                            className="h-8 px-2.5 text-xs font-semibold"
-                            title={m.localStatus === "disabled" ? "Activar módulo" : "Desactivar módulo"}
-                          >
-                            {m.localStatus === "disabled" ? "Activar" : "Desactivar"}
-                          </Button>
+                          <div className="flex items-center gap-1.5">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => void handleToggleModule(m)}
+                              className="h-8 px-2.5 text-xs font-semibold"
+                              title={m.localStatus === "disabled" ? "Activar módulo" : "Desactivar módulo"}
+                            >
+                              {m.localStatus === "disabled" ? "Activar" : "Desactivar"}
+                            </Button>
 
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            onClick={() => void handleUninstall(m)}
-                            className="size-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                            title="Desinstalar módulo"
-                          >
-                            <Trash2 className="size-3.5" />
-                          </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              onClick={() => void handleUninstall(m)}
+                              className="size-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                              title="Desinstalar módulo"
+                            >
+                              <Trash2 className="size-3.5" />
+                            </Button>
+                          </div>
                         </div>
                       )}
                     </div>

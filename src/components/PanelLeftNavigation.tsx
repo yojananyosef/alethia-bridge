@@ -385,6 +385,7 @@ export function PanelLeftNavigation() {
               <div className="grid grid-cols-1 gap-1">
                 {bibleModules.map((m) => {
                   const active = activeModules.includes(m.id);
+                  const isOnlyActive = active && activeModules.length <= 1;
                   const lang = LANG_BADGES[m.language] ?? {
                     label: m.language,
                     bg: "bg-muted text-muted-foreground border-border",
@@ -392,12 +393,23 @@ export function PanelLeftNavigation() {
                   return (
                     <button
                       key={m.id}
-                      onClick={() => toggleModule(m.id)}
+                      onClick={() => {
+                        if (isOnlyActive) return;
+                        toggleModule(m.id);
+                      }}
+                      title={
+                        isOnlyActive
+                          ? `${m.name} (Al menos una versión bíblica debe permanecer activa)`
+                          : active
+                          ? `Ocultar ${m.name} del lector`
+                          : `Mostrar ${m.name} en el lector`
+                      }
                       className={cn(
                         "flex w-full items-center justify-between rounded-lg border px-2.5 py-1.5 text-xs transition-all text-left",
                         active
                           ? "border-primary/50 bg-primary/10 text-foreground font-semibold shadow-2xs"
                           : "border-border/60 bg-card/60 text-muted-foreground hover:bg-accent/60 hover:text-foreground",
+                        isOnlyActive && "opacity-95",
                       )}
                     >
                       <div className="flex items-center gap-2 truncate">
@@ -422,6 +434,11 @@ export function PanelLeftNavigation() {
                             >
                               {lang.label}
                             </span>
+                            {isOnlyActive && (
+                              <span className="text-[9px] font-mono text-primary/80 font-normal">
+                                (principal)
+                              </span>
+                            )}
                           </div>
                           <p className="truncate text-[10px] font-normal text-muted-foreground">
                             {m.name}

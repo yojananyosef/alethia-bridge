@@ -76,6 +76,7 @@ function ModuleBar({
       multiple
       value={activeModules}
       onValueChange={(next) => {
+        if (next.length === 0) return;
         const changed = bibles.find(
           (m) => next.includes(m.id) !== activeModules.includes(m.id),
         );
@@ -85,6 +86,7 @@ function ModuleBar({
     >
       {bibles.map((m) => {
         const active = activeModules.includes(m.id);
+        const isOnlyActive = active && activeModules.length <= 1;
         const desc = MODULE_DESCRIPTIONS[m.id] ?? {
           short: m.id,
           full: m.name,
@@ -94,7 +96,11 @@ function ModuleBar({
           <ToggleGroupItem
             key={m.id}
             value={m.id}
-            title={`${active ? "Ocultar" : "Mostrar"} ${desc.full} — ${desc.info}`}
+            title={
+              isOnlyActive
+                ? `${desc.full} (Al menos una versión debe permanecer activa)`
+                : `${active ? "Ocultar" : "Mostrar"} ${desc.full} — ${desc.info}`
+            }
             className={cn(
               "gap-1.5 px-2.5 text-xs transition-all",
               active ? "bg-accent/80 text-foreground font-semibold border-primary/40" : "text-muted-foreground",

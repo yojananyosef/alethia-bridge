@@ -129,10 +129,17 @@ export const useExegesisStore = create<ExegesisStore>()(
       toggleModule: (moduleId) =>
         set((state) => {
           const has = state.activeModules.includes(moduleId);
+          if (has) {
+            // Si es el único módulo activo, no permitir deseleccionarlo (siempre debe quedar al menos 1 biblia)
+            if (state.activeModules.length <= 1) {
+              return state;
+            }
+            return {
+              activeModules: state.activeModules.filter((m) => m !== moduleId),
+            };
+          }
           return {
-            activeModules: has
-              ? state.activeModules.filter((m) => m !== moduleId)
-              : [...state.activeModules, moduleId],
+            activeModules: [...state.activeModules, moduleId],
           };
         }),
       addInstalledModule: (moduleId) =>
@@ -146,7 +153,11 @@ export const useExegesisStore = create<ExegesisStore>()(
       removeInstalledModule: (moduleId) =>
         set((state) => {
           const list = state.installedModules.filter((m) => m !== moduleId);
-          const active = state.activeModules.filter((m) => m !== moduleId);
+          let active = state.activeModules.filter((m) => m !== moduleId);
+          if (active.length === 0) {
+            const nextBible = list.find((id) => id !== moduleId && id !== "lexicon");
+            active = [nextBible ?? "RV1909"];
+          }
           syncInstalledCookie(list);
           return { installedModules: list, activeModules: active };
         }),
