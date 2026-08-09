@@ -16,6 +16,7 @@ import {
   Zap,
 } from "lucide-react";
 import { LibraryManagerModal } from "./catalog/LibraryManagerModal";
+import { DevotionModal } from "./devotion/DevotionModal";
 import { useExegesisStore } from "../store/useExegesisStore";
 import type { SearchResponse, SearchResult, ThemeId } from "../types/bible";
 import type { ModuleInfo } from "../types/module";
@@ -30,6 +31,7 @@ const THEMES: { id: ThemeId; label: string; icon: typeof Sun }[] = [
 export function Omnibar() {
   const [open, setOpen] = useState(false);
   const [catalogOpen, setCatalogOpen] = useState(false);
+  const [devotionOpen, setDevotionOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [modules, setModules] = useState<ModuleInfo[]>([]);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
@@ -358,6 +360,27 @@ export function Omnibar() {
               </Command.Item>
             </Command.Group>
 
+            {/* Acceso a Devocionales y Meditaciones */}
+            <Command.Group heading="Devocional & Lectura Diaria" className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-rose-500">
+              <Command.Item
+                value="devocional-diario-spurgeon-morning-evening-lectura-meditacion"
+                onSelect={() => {
+                  setOpen(false);
+                  setDevotionOpen(true);
+                }}
+                className="flex cursor-pointer items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground"
+              >
+                <div className="flex items-center gap-2.5">
+                  <Sparkles className="size-4 text-rose-500" />
+                  <div>
+                    <span className="font-semibold text-foreground">Abrir Devocional del Día</span>
+                    <p className="text-[11px] text-muted-foreground">Lecturas matutinas y vespertinas de Charles Spurgeon</p>
+                  </div>
+                </div>
+                <kbd className="rounded border border-border bg-card px-1.5 py-0.5 text-[10px] font-mono">Devocional</kbd>
+              </Command.Item>
+            </Command.Group>
+
             {/* Selector de Temas Visuales */}
             <Command.Group heading="Temas de Visualización" className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
               {THEMES.map((t) => {
@@ -405,6 +428,11 @@ export function Omnibar() {
       <LibraryManagerModal
         open={catalogOpen}
         onOpenChange={setCatalogOpen}
+      />
+
+      <DevotionModal
+        open={devotionOpen}
+        onOpenChange={setDevotionOpen}
       />
     </>
   );

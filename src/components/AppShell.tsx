@@ -1,6 +1,7 @@
 "use client";
 
-import { PanelRight } from "lucide-react";
+import { useState } from "react";
+import { PanelRight, Sparkles } from "lucide-react";
 import { Sidebar, SidebarProvider, SidebarInset, SidebarTrigger } from "../components/ui/sidebar";
 import { Button } from "../components/ui/button";
 import { Omnibar } from "./Omnibar";
@@ -9,6 +10,7 @@ import { PanelLeftNavigation } from "./PanelLeftNavigation";
 import { PanelRightAnalysis } from "./PanelRightAnalysis";
 import { ThemeApplier } from "./ThemeApplier";
 import { ThemeSwitcher } from "./ThemeSwitcher";
+import { DevotionModal } from "./devotion/DevotionModal";
 import { useExegesisStore } from "../store/useExegesisStore";
 import { cn } from "../lib/utils";
 
@@ -31,6 +33,7 @@ import { useIsMobile } from "../hooks/use-mobile";
  */
 export function AppShell() {
   const isMobile = useIsMobile();
+  const [devotionOpen, setDevotionOpen] = useState(false);
   const {
     isRightSidebarOpen,
     toggleRightSidebar,
@@ -65,6 +68,20 @@ export function AppShell() {
 
           {/* Acciones del Top Bar */}
           <div className="flex items-center gap-1.5">
+            {/* Botón Devocional Diario */}
+            <Button
+              variant={devotionOpen ? "secondary" : "ghost"}
+              size="icon-sm"
+              onClick={() => setDevotionOpen(true)}
+              title="Devocional del Día (Lectura matutina y nocturna)"
+              className={cn(
+                "relative size-8 transition-colors text-rose-500 hover:text-rose-600 dark:text-rose-400 hover:bg-rose-500/10",
+                devotionOpen && "bg-rose-500/15 border-rose-500/30",
+              )}
+            >
+              <Sparkles className="size-4" />
+            </Button>
+
             <Button
               variant={isRightSidebarOpen ? "secondary" : "ghost"}
               size="icon-sm"
@@ -84,6 +101,9 @@ export function AppShell() {
             <ThemeSwitcher />
           </div>
         </header>
+
+        {/* Modal de Lectura Devocional Diaria */}
+        <DevotionModal open={devotionOpen} onOpenChange={setDevotionOpen} />
 
         {/* Área de trabajo: Lector central + Panel derecho integrado */}
         <div className="relative flex min-w-0 flex-1 overflow-hidden">
