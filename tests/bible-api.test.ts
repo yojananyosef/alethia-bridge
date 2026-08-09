@@ -2,7 +2,7 @@ import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { rmSync } from "node:fs";
 import path from "node:path";
-import { createDatabase as Database } from "../src/lib/db/sqlite.ts";
+import { createDatabase } from "../src/lib/db/sqlite.ts";
 import { zipSync } from "fflate";
 import { GET as readGET } from "../app/api/bible/read/route.ts";
 import { GET as searchGET } from "../app/api/bible/search/route.ts";
@@ -33,7 +33,7 @@ async function installTestCommentary(): Promise<void> {
   const target = path.join(MODULES_DIR, `${TEST_COMMENTARY_ID}.db`);
   await import("node:fs").then((fs) => fs.promises.rm(target, { force: true }));
   const tmp = path.join(MODULES_DIR, `.fixture-${TEST_COMMENTARY_ID}.db`);
-  const db = new Database(tmp);
+  const db = createDatabase(tmp);
   db.exec(`CREATE TABLE meta (clave TEXT PRIMARY KEY, valor TEXT NOT NULL);
            CREATE TABLE comentarios (
              id_comentario INTEGER PRIMARY KEY AUTOINCREMENT,

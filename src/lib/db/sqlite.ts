@@ -54,7 +54,7 @@ export function ensureModuleDbReady(moduleId: string): string {
   ];
 
   for (const dir of candidateDirs) {
-    if (existsSync(dir)) {
+    if (existsSync(/*turbopackIgnore: true*/ dir)) {
       try {
         const candidates = [
           path.join(dir, `${moduleId}-1.0.0.abmod`),
@@ -62,8 +62,8 @@ export function ensureModuleDbReady(moduleId: string): string {
           path.join(dir, `${moduleId}.abmod`),
         ];
         for (const cand of candidates) {
-          if (existsSync(cand)) {
-            const zip = unzipSync(new Uint8Array(readFileSync(cand)));
+          if (existsSync(/*turbopackIgnore: true*/ cand)) {
+            const zip = unzipSync(new Uint8Array(readFileSync(/*turbopackIgnore: true*/ cand)));
             const dbBytes = zip["module.db"] || zip[`${moduleId}.db`];
             if (dbBytes && dbBytes.length > 0) {
               mkdirSync(MODULES_DIR, { recursive: true });

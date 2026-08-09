@@ -2,7 +2,7 @@ import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { rmSync } from "node:fs";
 import path from "node:path";
-import { createDatabase as Database } from "../src/lib/db/sqlite.ts";
+import { createDatabase } from "../src/lib/db/sqlite.ts";
 import { zipSync } from "fflate";
 import { GET, POST } from "../app/api/modules/route.ts";
 import { DELETE, PATCH } from "../app/api/modules/[id]/route.ts";
@@ -84,7 +84,7 @@ describe("API /api/modules", () => {
   test("instala y desinstala un paquete .abmod (módulo de comentario)", async () => {
     // Construir el paquete de prueba en memoria
     const tmp = path.join(MODULES_DIR, `.fixture-${TEST_ID}.db`);
-    const db = new Database(tmp);
+    const db = createDatabase(tmp);
     db.exec(`CREATE TABLE meta (clave TEXT PRIMARY KEY, valor TEXT NOT NULL);`);
     const ins = db.prepare(`INSERT INTO meta (clave, valor) VALUES (?, ?)`);
     const manifest = {
