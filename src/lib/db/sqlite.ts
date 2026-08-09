@@ -37,25 +37,32 @@ export function ensureModuleDbReady(moduleId: string): string {
     } catch {}
   }
 
-  const distDir = path.join(process.cwd(), "dist-modules");
-  if (existsSync(distDir)) {
-    try {
-      const candidates = [
-        path.join(distDir, `${moduleId}-1.0.0.abmod`),
-        path.join(distDir, `${moduleId}.abmod`),
-      ];
-      for (const cand of candidates) {
-        if (existsSync(cand)) {
-          const zip = unzipSync(new Uint8Array(readFileSync(cand)));
-          const dbBytes = zip["module.db"];
-          if (dbBytes && dbBytes.length > 0) {
-            mkdirSync(TMP_MODULES_DIR, { recursive: true });
-            writeFileSync(tmp, dbBytes);
-            return tmp;
+  const candidateDirs = [
+    path.join(process.cwd(), "binaries"),
+    path.join(process.cwd(), "dist-modules"),
+  ];
+
+  for (const dir of candidateDirs) {
+    if (existsSync(dir)) {
+      try {
+        const candidates = [
+          path.join(dir, `${moduleId}-1.0.0.abmod`),
+          path.join(dir, `${moduleId}-1.1.0.abmod`),
+          path.join(dir, `${moduleId}.abmod`),
+        ];
+        for (const cand of candidates) {
+          if (existsSync(cand)) {
+            const zip = unzipSync(new Uint8Array(readFileSync(cand)));
+            const dbBytes = zip["module.db"] || zip[`${moduleId}.db`];
+            if (dbBytes && dbBytes.length > 0) {
+              mkdirSync(MODULES_DIR, { recursive: true });
+              writeFileSync(local, dbBytes);
+              return local;
+            }
           }
         }
-      }
-    } catch {}
+      } catch {}
+    }
   }
 
   return local;
@@ -185,6 +192,48 @@ CREATE TABLE IF NOT EXISTS parsing_gramatical (
   descripcion_espanol TEXT NOT NULL,
   categoria_gramatical TEXT NOT NULL
 );
+`;
+
+/** Diccionarios enciclopédicos y temáticos (p. ej. Easton, Smith, Hastings). */
+export const SCHEMA_DICTIONARY = `
+CREATE TABLE IF NOT EXISTS entradas (
+  id_entrada INTEGER PRIMARY KEY AUTOINCREMENT,
+  termino TEXT NOT NULL,
+  slug TEXT NOT NULL,
+  definicion TEXT NOT NULL,
+  referencias TEXT,
+  fuente TEXT NOT NULL
+);
+
+CREATE VIRTUAL TABLE IF NOT EXISTS entradas_fts USING fts5(
+  termino,
+  definicion,
+  content='entradas',
+  content_rowid='id_entrada',
+  tokenize='unicode61'
+);
+
+CREATE INDEX IF NOT EXISTS idx_entradas_slug ON entradas(slug);
+CREATE INDEX IF NOT EXISTS idx_entradas_termino ON entradas(termino);
+`;
+
+export const DICTIONARY_FTS_TRIGGERS = `
+CREATE TRIGGER IF NOT EXISTS entradas_ai AFTER INSERT ON entradas BEGIN
+  INSERT INTO entradas_fts(rowid, termino, definicion)
+  VALUES (new.id_entrada, new.termino, new.definicion);
+END;
+
+CREATE TRIGGER IF NOT EXISTS entradas_ad AFTER DELETE ON entradas BEGIN
+  INSERT INTO entradas_fts(entradas_fts, rowid, termino, definicion)
+  VALUES ('delete', old.id_entrada, old.termino, old.definicion);
+END;
+
+CREATE TRIGGER IF NOT EXISTS entradas_au AFTER UPDATE ON entradas BEGIN
+  INSERT INTO entradas_fts(entradas_fts, rowid, termino, definicion)
+  VALUES ('delete', old.id_entrada, old.termino, old.definicion);
+  INSERT INTO entradas_fts(rowid, termino, definicion)
+  VALUES (new.id_entrada, new.termino, new.definicion);
+END;
 `;
 
 export const FTS_TRIGGERS = `

@@ -1,8 +1,8 @@
 /** Tipos del sistema de módulos instalables (formato .abmod). */
 
-export type ModuleType = "bible" | "lexicon" | "commentary" | "crossref" | "devotion";
+export type ModuleType = "bible" | "lexicon" | "commentary" | "crossref" | "devotion" | "dictionary";
 
-export type ModuleLanguage = "es" | "el" | "he" | "en" | "la" | "grc";
+export type ModuleLanguage = "es" | "el" | "he" | "en" | "de" | "la" | "grc" | "fr" | "pt" | "it";
 
 /** Versión de esquema que la app entiende; los módulos más nuevos se rechazan con mensaje claro. */
 export const APP_SCHEMA_VERSION = 1;

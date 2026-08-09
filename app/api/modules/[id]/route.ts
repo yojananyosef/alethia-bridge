@@ -34,10 +34,10 @@ export async function DELETE(_request: Request, ctx: RouteContext<"/api/modules/
     closeModuleDb(id);
     clearModuleInfoCache(id);
     for (const ext of [".db", ".db-wal", ".db-shm", ".db-journal"]) {
-      const file = path.join(MODULES_DIR, `${id}${ext}`);
-      if (existsSync(file)) rmSync(file);
-      const tmpFile = path.join(TMP_MODULES_DIR, `${id}${ext}`);
-      if (existsSync(tmpFile)) rmSync(tmpFile);
+      const file = path.join(/*turbopackIgnore: true*/ MODULES_DIR, `${id}${ext}`);
+      if (existsSync(/*turbopackIgnore: true*/ file)) rmSync(/*turbopackIgnore: true*/ file);
+      const tmpFile = path.join(/*turbopackIgnore: true*/ TMP_MODULES_DIR, `${id}${ext}`);
+      if (existsSync(/*turbopackIgnore: true*/ tmpFile)) rmSync(/*turbopackIgnore: true*/ tmpFile);
     }
     clearModuleInfoCache(id);
     return Response.json({ ok: true, moduleId: id });
