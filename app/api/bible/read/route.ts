@@ -7,6 +7,7 @@ import {
   readCrossReferences,
 } from "../../../../src/lib/bible/service.ts";
 import { getInstalledIdsFromRequest } from "../../../../src/lib/modules/registry.ts";
+import { ensureModuleReadyAsync } from "../../../../src/lib/db/sqlite.ts";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +25,7 @@ export async function GET(request: Request): Promise<Response> {
     }
     const crossref = url.searchParams.get("crossref");
     if (crossref) {
+      await ensureModuleReadyAsync("TSK");
       const data = readCrossReferences(
         url.searchParams.get("book") ?? "",
         url.searchParams.get("chapter") ?? "",
@@ -34,6 +36,9 @@ export async function GET(request: Request): Promise<Response> {
     }
     const commentary = url.searchParams.get("commentary");
     if (commentary) {
+      if (installedFilter && installedFilter.length > 0) {
+        await Promise.all(installedFilter.map((id) => ensureModuleReadyAsync(id)));
+      }
       const data = readCommentary(
         url.searchParams.get("book") ?? "",
         url.searchParams.get("chapter") ?? "",
@@ -43,20 +48,29 @@ export async function GET(request: Request): Promise<Response> {
     }
     const lexicon = url.searchParams.get("lexicon");
     if (lexicon) {
+      await ensureModuleReadyAsync("lexicon");
       const entry = getLexiconEntry(lexicon.toUpperCase());
       if (!entry) return Response.json({ error: "Strong no encontrado" }, { status: 404 });
       return Response.json({ lexicon: entry });
     }
     const morph = url.searchParams.get("morph");
     if (morph) {
+      await ensureModuleReadyAsync("lexicon");
       const analysis = getMorphology(morph.toUpperCase());
       if (!analysis) return Response.json({ error: "Código morfológico no encontrado" }, { status: 404 });
       return Response.json({ morph: analysis });
     }
+
+    const requestedModuleStr = url.searchParams.get("modules");
+    if (requestedModuleStr) {
+      const ids = requestedModuleStr.split(",").map((s) => s.trim().toUpperCase()).filter(Boolean);
+      await Promise.all(ids.map((id) => ensureModuleReadyAsync(id)));
+    }
+
     const data = readChapter(
       url.searchParams.get("book") ?? "",
       url.searchParams.get("chapter") ?? "",
-      url.searchParams.get("modules"),
+      requestedModuleStr,
     );
     return Response.json(data);
   } catch (err) {

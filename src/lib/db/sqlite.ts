@@ -35,22 +35,24 @@ export function getWritableModulesDir(): string {
 /** Asegura que el archivo .db del módulo esté disponible en disco o tmp (extrayéndolo de dist-modules bajo demanda). */
 export function ensureModuleDbReady(moduleId: string): string {
   const local = path.join(MODULES_DIR, `${moduleId}.db`);
-  if (existsSync(local)) {
+  if (existsSync(/*turbopackIgnore: true*/ local)) {
     try {
-      if (statSync(local).size > 0) return local;
+      if (statSync(/*turbopackIgnore: true*/ local).size > 1024) return local;
     } catch {}
   }
 
-  const tmp = path.join(TMP_MODULES_DIR, `${moduleId}.db`);
-  if (existsSync(tmp)) {
+  const writableDir = getWritableModulesDir();
+  const tmp = path.join(writableDir, `${moduleId}.db`);
+  if (existsSync(/*turbopackIgnore: true*/ tmp)) {
     try {
-      if (statSync(tmp).size > 0) return tmp;
+      if (statSync(/*turbopackIgnore: true*/ tmp).size > 1024) return tmp;
     } catch {}
   }
 
   const candidateDirs = [
     path.join(process.cwd(), "binaries"),
     path.join(process.cwd(), "dist-modules"),
+    path.join(process.cwd(), "..", "alethia-modules", "binaries"),
   ];
 
   for (const dir of candidateDirs) {
@@ -66,9 +68,8 @@ export function ensureModuleDbReady(moduleId: string): string {
             const zip = unzipSync(new Uint8Array(readFileSync(/*turbopackIgnore: true*/ cand)));
             const dbBytes = zip["module.db"] || zip[`${moduleId}.db`];
             if (dbBytes && dbBytes.length > 0) {
-              mkdirSync(MODULES_DIR, { recursive: true });
-              writeFileSync(local, dbBytes);
-              return local;
+              writeFileSync(tmp, dbBytes);
+              return tmp;
             }
           }
         }
@@ -76,7 +77,46 @@ export function ensureModuleDbReady(moduleId: string): string {
     }
   }
 
-  return local;
+  return existsSync(/*turbopackIgnore: true*/ local) ? local : tmp;
+}
+
+export async function ensureModuleReadyAsync(moduleId: string): Promise<string> {
+  const ready = ensureModuleDbReady(moduleId);
+  if (existsSync(/*turbopackIgnore: true*/ ready)) {
+    try {
+      if (statSync(/*turbopackIgnore: true*/ ready).size > 1024) return ready;
+    } catch {}
+  }
+
+  const writableDir = getWritableModulesDir();
+  const target = path.join(writableDir, `${moduleId}.db`);
+
+  const rawBase = "https://raw.githubusercontent.com/yojananyosef/alethia-modules/main/binaries";
+  const candidateUrls = [
+    `${rawBase}/${moduleId}-1.0.0.abmod`,
+    `${rawBase}/${moduleId}-1.1.0.abmod`,
+    `${rawBase}/${moduleId}.abmod`,
+  ];
+
+  for (const url of candidateUrls) {
+    try {
+      const res = await fetch(url, {
+        headers: { "User-Agent": "Alethia-Bridge-Runtime/1.0" },
+        signal: AbortSignal.timeout(20000),
+      });
+      if (res.ok) {
+        const bytes = new Uint8Array(await res.arrayBuffer());
+        const zip = unzipSync(bytes);
+        const dbBytes = zip["module.db"] || zip[`${moduleId}.db`];
+        if (dbBytes && dbBytes.length > 0) {
+          writeFileSync(target, dbBytes);
+          return target;
+        }
+      }
+    } catch {}
+  }
+
+  return target;
 }
 
 export function resolveModuleDbPath(moduleId: string): string {

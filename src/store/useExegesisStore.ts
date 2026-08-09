@@ -67,8 +67,8 @@ function getInitialPersistedState() {
   const fallback = {
     syncGroupA: { book: "Gen", chapter: 1, verse: 1 },
     activeTheme: "academic-paper" as ThemeId,
-    activeModules: ["RV1909"],
-    installedModules: ["RV1909", "lexicon"],
+    activeModules: [] as string[],
+    installedModules: [] as string[],
     readerLayout: "interleaved" as ReaderLayout,
     fontSize: "base" as ReaderFontSize,
     showStrongs: true,
@@ -87,6 +87,7 @@ function getInitialPersistedState() {
           ...fallback,
           ...parsed.state,
           installedModules: parsed.state.installedModules ?? fallback.installedModules,
+          activeModules: parsed.state.activeModules ?? fallback.activeModules,
         };
         syncInstalledCookie(state.installedModules);
         return state;

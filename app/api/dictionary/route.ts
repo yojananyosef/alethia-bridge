@@ -1,5 +1,6 @@
 import { getDictionaryEntry, searchDictionary } from "../../../src/lib/dictionary/service.ts";
 import { getInstalledIdsFromRequest } from "../../../src/lib/modules/registry.ts";
+import { ensureModuleReadyAsync } from "../../../src/lib/db/sqlite.ts";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +11,9 @@ export async function GET(request: Request): Promise<Response> {
 
     const query = url.searchParams.get("q") ?? url.searchParams.get("query") ?? "";
     const entrySlug = url.searchParams.get("entry") ?? url.searchParams.get("term");
-    const moduleId = url.searchParams.get("moduleId") ?? url.searchParams.get("module");
+    const moduleId = url.searchParams.get("moduleId") ?? url.searchParams.get("module") ?? "EASTON";
+
+    await ensureModuleReadyAsync(moduleId);
 
     if (entrySlug) {
       const entry = getDictionaryEntry(entrySlug, moduleId, installedFilter);
