@@ -189,9 +189,30 @@ export function getInstalledIdsFromRequest(request?: Request): string[] | null {
   return null;
 }
 
-/** Escanea módulos instalados (descubre disco y une con filtro de cliente si se provee). */
+/** Escanea módulos instalados (respeta estrictamente el filtro de cliente por usuario). */
 export function listModules(installedFilter?: string[] | null): ModuleInfo[] {
   const moduleMap = new Map<string, ModuleInfo>();
+
+  // Si el cliente especifica su lista de módulos instalados (fuente de verdad por usuario)
+  if (installedFilter !== undefined && installedFilter !== null) {
+    if (installedFilter.length === 0) {
+      return [];
+    }
+    for (const id of installedFilter) {
+      const cleanId = id.trim();
+      if (!cleanId) continue;
+      ensureModuleDbReady(cleanId);
+      const info = readModuleInfo(cleanId);
+      if (info) moduleMap.set(cleanId, info);
+    }
+    return Array.from(moduleMap.values()).sort((a, b) => a.id.localeCompare(b.id));
+  }
+
+  // Fallback si no hay header/cookie de cliente (entorno backend/tests/scripts locales)
+  const defaultLocalIds = ["RV1909", "SBLGNT", "WLC", "lexicon", "EASTON", "SPURGEON-ME", "TA", "TSK", "MHC"];
+  for (const id of defaultLocalIds) {
+    ensureModuleDbReady(id);
+  }
 
   const dirs = [MODULES_DIR, getWritableModulesDir(), TMP_MODULES_DIR];
   for (const dir of dirs) {
@@ -204,17 +225,6 @@ export function listModules(installedFilter?: string[] | null): ModuleInfo[] {
         if (info) moduleMap.set(moduleId, info);
       }
     } catch {}
-  }
-
-  // Si el cliente especifica IDs adicionales en installedFilter que puedan requerir carga
-  if (installedFilter && installedFilter.length > 0) {
-    for (const id of installedFilter) {
-      const cleanId = id.trim();
-      if (!cleanId || moduleMap.has(cleanId)) continue;
-      ensureModuleDbReady(cleanId);
-      const info = readModuleInfo(cleanId);
-      if (info) moduleMap.set(cleanId, info);
-    }
   }
 
   return Array.from(moduleMap.values()).sort((a, b) => a.id.localeCompare(b.id));

@@ -36,7 +36,7 @@ function moduleLanguage(moduleId: string): BibleLanguage {
 export function parseModules(raw: string | null): BibleModuleId[] {
   if (!raw || !raw.trim()) {
     const primary = getPrimaryBibleModule();
-    return [primary?.id ?? "RV1909"];
+    return primary ? [primary.id] : [];
   }
   const parsed = raw
     .split(",")
@@ -51,7 +51,7 @@ export function parseModules(raw: string | null): BibleModuleId[] {
 
   if (parsed.length === 0) {
     const primary = getPrimaryBibleModule();
-    return [primary?.id ?? "RV1909"];
+    return primary ? [primary.id] : [];
   }
   return parsed;
 }

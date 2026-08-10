@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { createDatabase, ensureModuleDbReady, resolveModuleDbPath } from "../db/sqlite.ts";
-import { listModules } from "../modules/registry.ts";
+import { getModule, listModules, readModuleInfo } from "../modules/registry.ts";
 import { parseScriptureReference } from "../bible/reference-parser.ts";
 import type { DevotionEntry, DevotionMoment, DevotionResponse, ParsedVerseRef } from "../../types/devotion.ts";
 
@@ -22,9 +22,15 @@ export function readDevotion(
   const defaultMoment: DevotionMoment = now.getHours() >= 17 ? "noche" : "manana";
   const moment: DevotionMoment = momentParam || defaultMoment;
 
-  const candidateModules = listModules(installedFilter).filter(
+  let candidateModules = listModules(installedFilter).filter(
     (m) => m.type === "devotion" && m.status === "installed",
   );
+
+  if (candidateModules.length === 0 && requestedModuleId) {
+    ensureModuleDbReady(requestedModuleId);
+    const mod = readModuleInfo(requestedModuleId);
+    if (mod) candidateModules = [mod];
+  }
 
   const availableModules = candidateModules.map((m) => ({ id: m.id, name: m.name }));
 

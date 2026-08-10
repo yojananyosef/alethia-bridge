@@ -15,7 +15,9 @@ export async function GET(request: Request): Promise<Response> {
     const momentStr = url.searchParams.get("moment");
     const moduleId = url.searchParams.get("moduleId") || url.searchParams.get("module") || "SPURGEON-ME";
 
-    await ensureModuleReadyAsync(moduleId);
+    if (!installedFilter || installedFilter.includes(moduleId)) {
+      await ensureModuleReadyAsync(moduleId);
+    }
 
     const month = monthStr ? Number.parseInt(monthStr, 10) : undefined;
     const day = dayStr ? Number.parseInt(dayStr, 10) : undefined;

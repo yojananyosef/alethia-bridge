@@ -13,7 +13,9 @@ export async function GET(request: Request): Promise<Response> {
     const entrySlug = url.searchParams.get("entry") ?? url.searchParams.get("term");
     const moduleId = url.searchParams.get("moduleId") ?? url.searchParams.get("module") ?? "EASTON";
 
-    await ensureModuleReadyAsync(moduleId);
+    if (!installedFilter || installedFilter.includes(moduleId)) {
+      await ensureModuleReadyAsync(moduleId);
+    }
 
     if (entrySlug) {
       const entry = getDictionaryEntry(entrySlug, moduleId, installedFilter);

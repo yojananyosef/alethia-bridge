@@ -25,7 +25,9 @@ export async function GET(request: Request): Promise<Response> {
     }
     const crossref = url.searchParams.get("crossref");
     if (crossref) {
-      await ensureModuleReadyAsync("TSK");
+      if (!installedFilter || installedFilter.includes("TSK")) {
+        await ensureModuleReadyAsync("TSK");
+      }
       const data = readCrossReferences(
         url.searchParams.get("book") ?? "",
         url.searchParams.get("chapter") ?? "",
@@ -48,14 +50,18 @@ export async function GET(request: Request): Promise<Response> {
     }
     const lexicon = url.searchParams.get("lexicon");
     if (lexicon) {
-      await ensureModuleReadyAsync("lexicon");
+      if (!installedFilter || installedFilter.includes("lexicon")) {
+        await ensureModuleReadyAsync("lexicon");
+      }
       const entry = getLexiconEntry(lexicon.toUpperCase());
       if (!entry) return Response.json({ error: "Strong no encontrado" }, { status: 404 });
       return Response.json({ lexicon: entry });
     }
     const morph = url.searchParams.get("morph");
     if (morph) {
-      await ensureModuleReadyAsync("lexicon");
+      if (!installedFilter || installedFilter.includes("lexicon")) {
+        await ensureModuleReadyAsync("lexicon");
+      }
       const analysis = getMorphology(morph.toUpperCase());
       if (!analysis) return Response.json({ error: "Código morfológico no encontrado" }, { status: 404 });
       return Response.json({ morph: analysis });
@@ -63,8 +69,13 @@ export async function GET(request: Request): Promise<Response> {
 
     const requestedModuleStr = url.searchParams.get("modules");
     if (requestedModuleStr) {
-      const ids = requestedModuleStr.split(",").map((s) => s.trim().toUpperCase()).filter(Boolean);
-      await Promise.all(ids.map((id) => ensureModuleReadyAsync(id)));
+      const ids = requestedModuleStr
+        .split(",")
+        .map((s) => s.trim().toUpperCase())
+        .filter((id) => Boolean(id) && (!installedFilter || installedFilter.includes(id)));
+      if (ids.length > 0) {
+        await Promise.all(ids.map((id) => ensureModuleReadyAsync(id)));
+      }
     }
 
     const data = readChapter(
