@@ -70,7 +70,7 @@ export async function GET(request: Request): Promise<Response> {
       const ids = requestedModuleStr
         .split(",")
         .map((s) => s.trim().toUpperCase())
-        .filter((id) => Boolean(id) && (!installedFilter || installedFilter.includes(id)));
+        .filter((id) => Boolean(id) && (!installedFilter || installedFilter.length === 0 || installedFilter.includes(id)));
       if (ids.length > 0) {
         await Promise.all(ids.map((id) => ensureModuleReadyAsync(id)));
       }

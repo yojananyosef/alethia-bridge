@@ -58,7 +58,11 @@ export type ExegesisStore = ExegesisState & ExegesisActions;
 
 function syncInstalledCookie(modules: string[]) {
   if (typeof document !== "undefined") {
-    document.cookie = `alethia_installed=${encodeURIComponent(modules.join(","))}; path=/; max-age=31536000; SameSite=Lax`;
+    if (!modules || modules.length === 0) {
+      document.cookie = "alethia_installed=; path=/; max-age=0; SameSite=Lax";
+    } else {
+      document.cookie = `alethia_installed=${encodeURIComponent(modules.join(","))}; path=/; max-age=31536000; SameSite=Lax`;
+    }
   }
 }
 
@@ -89,13 +93,14 @@ function getInitialPersistedState() {
           installedModules: parsed.state.installedModules ?? fallback.installedModules,
           activeModules: parsed.state.activeModules ?? fallback.activeModules,
         };
-        syncInstalledCookie(state.installedModules);
+        if (state.installedModules.length > 0) {
+          syncInstalledCookie(state.installedModules);
+        }
         return state;
       }
     }
   } catch {}
 
-  syncInstalledCookie(fallback.installedModules);
   return fallback;
 }
 

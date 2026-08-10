@@ -159,23 +159,12 @@ function readModuleInfoUncached(moduleId: string): ModuleInfo | null {
 /** Helper para extraer los IDs de módulos instalados por el usuario desde la petición (header, cookie o query). */
 export function getInstalledIdsFromRequest(request?: Request): string[] | null {
   if (!request) return null;
-  // 1. Header x-installed-modules
+  // 1. Header x-installed-modules (petición explícita de API/cliente)
   if (request.headers.has("x-installed-modules")) {
     const header = request.headers.get("x-installed-modules") ?? "";
     return header.split(",").map((s) => s.trim()).filter(Boolean);
   }
-  // 2. Cookie alethia_installed
-  const cookieHeader = request.headers.get("cookie");
-  if (cookieHeader && cookieHeader.includes("alethia_installed=")) {
-    const match = cookieHeader.match(/alethia_installed=([^;]*)/);
-    if (match) {
-      try {
-        const val = decodeURIComponent(match[1] ?? "");
-        return val.split(",").map((s) => s.trim()).filter(Boolean);
-      } catch {}
-    }
-  }
-  // 3. Query param ?installed=...
+  // 2. Query param ?installed=...
   try {
     const url = new URL(request.url);
     if (url.searchParams.has("installed")) {
@@ -183,10 +172,23 @@ export function getInstalledIdsFromRequest(request?: Request): string[] | null {
       return q.split(",").map((s) => s.trim()).filter(Boolean);
     }
   } catch {}
+  // 3. Cookie alethia_installed (solo si contiene un valor no vacío)
+  const cookieHeader = request.headers.get("cookie");
+  if (cookieHeader && cookieHeader.includes("alethia_installed=")) {
+    const match = cookieHeader.match(/alethia_installed=([^;]*)/);
+    if (match) {
+      try {
+        const val = decodeURIComponent(match[1] ?? "").trim();
+        if (val.length > 0) {
+          return val.split(",").map((s) => s.trim()).filter(Boolean);
+        }
+      } catch {}
+    }
+  }
   return null;
 }
 
-/** Escanea módulos instalados (respeta estrictamente el filtro de cliente por usuario). */
+/** Escanea módulos instalados (respeta el filtro de cliente por usuario si está presente). */
 export function listModules(installedFilter?: string[] | null): ModuleInfo[] {
   const moduleMap = new Map<string, ModuleInfo>();
 
@@ -202,10 +204,16 @@ export function listModules(installedFilter?: string[] | null): ModuleInfo[] {
       const info = readModuleInfo(cleanId);
       if (info) moduleMap.set(cleanId, info);
     }
+    // Asegurar que el módulo 'lexicon' esté accesible si existe físicamente (módulo clave del sistema)
+    if (!moduleMap.has("lexicon")) {
+      ensureModuleDbReady("lexicon");
+      const info = readModuleInfo("lexicon");
+      if (info) moduleMap.set("lexicon", info);
+    }
     return Array.from(moduleMap.values()).sort((a, b) => a.id.localeCompare(b.id));
   }
 
-  // Fallback si no hay header/cookie de cliente (entorno backend/tests/scripts locales)
+  // Fallback si no hay header/cookie de cliente o viene vacío (descubrimiento completo de disco)
   const defaultLocalIds = ["RV1909", "SBLGNT", "WLC", "lexicon", "EASTON", "SPURGEON-ME", "TA", "TSK", "MHC"];
   for (const id of defaultLocalIds) {
     ensureModuleDbReady(id);
