@@ -49,6 +49,8 @@ export function Omnibar() {
     setActiveTheme,
     activeTheme,
     activeModules,
+    installedModules,
+    modulesRevision,
     toggleModule,
     setActiveLexiconTerm,
   } = useExegesisStore();
@@ -68,7 +70,11 @@ export function Omnibar() {
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
-    fetch("/api/modules", { cache: "no-store" })
+    const headers: Record<string, string> = {};
+    if (installedModules && installedModules.length > 0) {
+      headers["x-installed-modules"] = installedModules.join(",");
+    }
+    fetch("/api/modules", { cache: "no-store", headers })
       .then((r) => r.json())
       .then((d: { modules?: ModuleInfo[] }) => {
         if (!cancelled) setModules(d.modules ?? []);
@@ -77,7 +83,7 @@ export function Omnibar() {
     return () => {
       cancelled = true;
     };
-  }, [open]);
+  }, [open, installedModules, modulesRevision]);
 
   // Búsqueda en vivo con FTS5 cuando el usuario escribe
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);

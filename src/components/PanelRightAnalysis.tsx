@@ -30,7 +30,9 @@ import { SidebarContent, SidebarHeader } from "../components/ui/sidebar";
 import { Skeleton } from "../components/ui/skeleton";
 import { LibraryManagerModal } from "./catalog/LibraryManagerModal";
 import { DictionaryModal } from "./dictionary/DictionaryModal";
+import { LexiconDefinitionView } from "./lexicon/LexiconDefinitionView";
 import { useExegesisStore } from "../store/useExegesisStore";
+
 import { addNote, deleteNote, notesForVerse } from "../lib/db/dexie-user-db";
 import type { UserNote } from "../lib/db/dexie-user-db";
 import type { CommentaryModule, CrossRefModule, LexiconEntry, MorphologyAnalysis, ProperName } from "../types/bible";
@@ -147,7 +149,7 @@ export function PanelRightAnalysis() {
     return () => {
       cancelled = true;
     };
-  }, [activeLexiconTerm, syncGroupA.book, installedModules]);
+  }, [activeLexiconTerm, syncGroupA.book, installedModules, modulesRevision]);
 
   const refreshNotes = useCallback(async () => {
     try {
@@ -268,9 +270,14 @@ export function PanelRightAnalysis() {
 
   const copyLexiconInfo = async () => {
     if (!lexicon) return;
+    const cleanDetailed = (lexicon.detailedDefinition ?? "")
+      .replace(/<ref[^>]*>([\s\S]*?)<\/ref>/gi, "$1")
+      .replace(/<BR\s*\/?>/gi, "\n")
+      .replace(/<[^>]+>/g, "")
+      .replace(/_{2,3}/g, "  ");
     const text = `${lexicon.strongId} — ${lexicon.lemma} (${lexicon.transliteration})\nGlosa: ${
       lexicon.glosa ?? "-"
-    }\nDefinición: ${lexicon.shortDefinition}\n${lexicon.detailedDefinition ?? ""}`;
+    }\nDefinición: ${lexicon.shortDefinition ?? ""}\n${cleanDetailed}`;
     await navigator.clipboard.writeText(text);
     setCopiedLexicon(true);
     setTimeout(() => setCopiedLexicon(false), 2000);
@@ -366,17 +373,11 @@ export function PanelRightAnalysis() {
                 </div>
               )}
 
-              {/* Definición Breve */}
-              <div className="space-y-1">
-                <p className="text-xs font-medium text-foreground leading-relaxed">
-                  {lexicon.shortDefinition}
-                </p>
-                {lexicon.detailedDefinition && (
-                  <p className="text-[11px] text-muted-foreground leading-relaxed border-t border-border/40 pt-1.5">
-                    {lexicon.detailedDefinition}
-                  </p>
-                )}
-              </div>
+              {/* Definición Académica y Exegética Formateada */}
+              <LexiconDefinitionView
+                detailedDefinition={lexicon.detailedDefinition}
+                shortDefinition={lexicon.shortDefinition}
+              />
 
               {/* Dominio Semántico */}
               {lexicon.semanticDomain && (

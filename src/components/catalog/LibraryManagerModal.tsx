@@ -76,7 +76,6 @@ export function LibraryManagerModal({
   onModuleChanged,
 }: LibraryManagerModalProps) {
   const [catalog, setCatalog] = useState<CatalogResponse | null>(null);
-  const [loading, setLoading] = useState(false);
   const [installingId, setInstallingId] = useState<string | null>(null);
   const [installProgressText, setInstallProgressText] = useState<string | null>(null);
   const [notification, setNotification] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -84,14 +83,15 @@ export function LibraryManagerModal({
   const [activeTab, setActiveTab] = useState<"all" | "bible" | "lexicon" | "commentary" | "updates" | "installed">("all");
   const [langFilter, setLangFilter] = useState<string>("ALL");
 
-  const { activeModules, installedModules, toggleModule, addInstalledModule, removeInstalledModule } = useExegesisStore();
+  const { activeModules, installedModules, toggleModule, addInstalledModule, removeInstalledModule, bumpModulesRevision } = useExegesisStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const loadCatalog = useCallback(async (forceRefresh = false) => {
+  const loadCatalog = useCallback(async (forceRefresh = false, overrideInstalled?: string[]) => {
     setLoading(true);
     try {
+      const currentInstalled = overrideInstalled ?? useExegesisStore.getState().installedModules ?? [];
       const headers: Record<string, string> = {
-        "x-installed-modules": (installedModules ?? []).join(","),
+        "x-installed-modules": currentInstalled.join(","),
       };
       const res = await fetch(`/api/catalog${forceRefresh ? "?refresh=1" : ""}`, {
         cache: "no-store",
@@ -108,7 +108,7 @@ export function LibraryManagerModal({
     } finally {
       setLoading(false);
     }
-  }, [installedModules]);
+  }, []);
 
   useEffect(() => {
     if (open) {
@@ -140,22 +140,59 @@ export function LibraryManagerModal({
         throw new Error(body.error ?? `HTTP ${res.status}`);
       }
 
-      addInstalledModule(moduleItem.id);
-      for (const depId of body.installedDependencies ?? []) {
-        addInstalledModule(depId);
+      const installedDeps = body.installedDependencies ?? [];
+      const allNewIds = [moduleItem.id, ...installedDeps];
+
+      for (const id of allNewIds) {
+        addInstalledModule(id);
       }
 
       if (moduleItem.type === "bible" && !activeModules.includes(moduleItem.id)) {
         toggleModule(moduleItem.id);
       }
 
+      // Actualización optimista instantánea del catálogo en memoria
+      setCatalog((prev) => {
+        if (!prev) return null;
+        const newlyInstalled = new Set(allNewIds);
+        let nextInstalledCount = prev.installedCount;
+        let nextUpdatesCount = prev.updatesCount;
+
+        const nextModules = prev.modules.map((m) => {
+          if (newlyInstalled.has(m.id)) {
+            if (m.installStatus === "not_installed") {
+              nextInstalledCount++;
+            } else if (m.installStatus === "update_available") {
+              nextUpdatesCount = Math.max(0, nextUpdatesCount - 1);
+            }
+            return {
+              ...m,
+              installStatus: "installed" as const,
+              localStatus: "installed" as const,
+              installedVersion: m.version,
+            };
+          }
+          return m;
+        });
+
+        return {
+          ...prev,
+          modules: nextModules,
+          installedCount: nextInstalledCount,
+          updatesCount: nextUpdatesCount,
+        };
+      });
+
+      bumpModulesRevision();
+      onModuleChanged?.();
+
       setNotification({
         type: "success",
         text: `¡Módulo "${moduleItem.name}" (${moduleItem.id}) instalado y verificado con éxito!`,
       });
 
-      await loadCatalog(true);
-      onModuleChanged?.();
+      const latestInstalled = useExegesisStore.getState().installedModules;
+      await loadCatalog(true, latestInstalled);
     } catch (e) {
       setNotification({
         type: "error",
@@ -182,8 +219,25 @@ export function LibraryManagerModal({
           toggleModule(moduleItem.id);
         }
       }
-      await loadCatalog(true);
+
+      setCatalog((prev) => {
+        if (!prev) return null;
+        const nextModules = prev.modules.map((m) => {
+          if (m.id === moduleItem.id) {
+            return {
+              ...m,
+              localStatus: (nextStatus ? "installed" : "disabled") as "installed" | "disabled",
+            };
+          }
+          return m;
+        });
+        return { ...prev, modules: nextModules };
+      });
+
+      bumpModulesRevision();
       onModuleChanged?.();
+      const latestInstalled = useExegesisStore.getState().installedModules;
+      await loadCatalog(true, latestInstalled);
     } catch (e) {
       setNotification({
         type: "error",
@@ -205,12 +259,36 @@ export function LibraryManagerModal({
       if (activeModules.includes(moduleItem.id)) {
         toggleModule(moduleItem.id);
       }
+
+      setCatalog((prev) => {
+        if (!prev) return null;
+        const nextModules = prev.modules.map((m) => {
+          if (m.id === moduleItem.id) {
+            return {
+              ...m,
+              installStatus: "not_installed" as const,
+              localStatus: undefined,
+              installedVersion: undefined,
+            };
+          }
+          return m;
+        });
+        return {
+          ...prev,
+          modules: nextModules,
+          installedCount: Math.max(0, prev.installedCount - 1),
+        };
+      });
+
+      bumpModulesRevision();
+      onModuleChanged?.();
+
       setNotification({
         type: "success",
         text: `Módulo "${moduleItem.id}" desinstalado correctamente.`,
       });
-      await loadCatalog(true);
-      onModuleChanged?.();
+      const latestInstalled = useExegesisStore.getState().installedModules;
+      await loadCatalog(true, latestInstalled);
     } catch (e) {
       setNotification({
         type: "error",
@@ -230,12 +308,20 @@ export function LibraryManagerModal({
       const body = (await res.json()) as { ok?: boolean; moduleId?: string; error?: string };
       if (!res.ok || !body.ok) throw new Error(body.error ?? `HTTP ${res.status}`);
 
+      if (body.moduleId) {
+        addInstalledModule(body.moduleId);
+      }
+
+      bumpModulesRevision();
+      onModuleChanged?.();
+
       setNotification({
         type: "success",
         text: `Paquete local instalado con éxito (${body.moduleId}).`,
       });
-      await loadCatalog(true);
-      onModuleChanged?.();
+
+      const latestInstalled = useExegesisStore.getState().installedModules;
+      await loadCatalog(true, latestInstalled);
     } catch (e) {
       setNotification({
         type: "error",
@@ -246,6 +332,7 @@ export function LibraryManagerModal({
       setInstallProgressText(null);
     }
   };
+
 
   const filteredModules = useMemo(() => {
     if (!catalog?.modules) return [];
