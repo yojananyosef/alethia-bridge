@@ -71,58 +71,63 @@ function ModuleBar({
   activeModules: string[];
   toggleModule: (id: string) => void;
 }) {
-  const bibles = modules.filter((m) => m.type === "bible" && m.status === "installed");
+  const available = modules.filter(
+    (m) => (m.type === "bible" || m.type === "commentary") && m.status === "installed",
+  );
   return (
-    <ToggleGroup
-      size="sm"
-      variant="outline"
-      multiple
-      value={activeModules}
-      onValueChange={(next) => {
-        if (next.length === 0) return;
-        const changed = bibles.find(
-          (m) => next.includes(m.id) !== activeModules.includes(m.id),
-        );
-        if (changed) toggleModule(changed.id);
-      }}
-      aria-label="Módulos bíblicos activos"
-    >
-      {bibles.map((m) => {
-        const active = activeModules.includes(m.id);
-        const isOnlyActive = active && activeModules.length <= 1;
-        const desc = MODULE_DESCRIPTIONS[m.id] ?? {
-          short: m.id,
-          full: m.name,
-          info: `${m.name} (${LANG_LABEL[m.language] ?? m.language})`,
-        };
-        return (
-          <ToggleGroupItem
-            key={m.id}
-            value={m.id}
-            title={
-              isOnlyActive
-                ? `${desc.full} (Al menos una versión debe permanecer activa)`
-                : `${active ? "Ocultar" : "Mostrar"} ${desc.full} — ${desc.info}`
-            }
-            className={cn(
-              "gap-1.5 px-2.5 text-xs transition-all",
-              active ? "bg-accent/80 text-foreground font-semibold border-primary/40" : "text-muted-foreground",
-            )}
-          >
-            <span
+    <div className="max-w-[450px] overflow-x-auto scrollbar-none py-0.5">
+      <ToggleGroup
+        size="sm"
+        variant="outline"
+        multiple
+        value={activeModules}
+        onValueChange={(next) => {
+          if (next.length === 0) return;
+          const changed = available.find(
+            (m) => next.includes(m.id) !== activeModules.includes(m.id),
+          );
+          if (changed) toggleModule(changed.id);
+        }}
+        aria-label="Módulos bíblicos y comentarios activos"
+        className="flex-nowrap gap-1"
+      >
+        {available.map((m) => {
+          const active = activeModules.includes(m.id);
+          const isOnlyActive = active && activeModules.length <= 1;
+          const desc = MODULE_DESCRIPTIONS[m.id] ?? {
+            short: m.id,
+            full: m.name,
+            info: `${m.name} (${LANG_LABEL[m.language] ?? m.language})`,
+          };
+          return (
+            <ToggleGroupItem
+              key={m.id}
+              value={m.id}
+              title={
+                isOnlyActive
+                  ? `${desc.full} (Al menos un módulo debe permanecer activo)`
+                  : `${active ? "Ocultar" : "Mostrar"} ${desc.full} — ${desc.info}`
+              }
               className={cn(
-                "inline-block h-1.5 w-1.5 rounded-full transition-colors",
-                active ? "bg-primary" : "bg-muted-foreground/40",
+                "gap-1.5 px-2 text-xs shrink-0 transition-all",
+                active ? "bg-accent/80 text-foreground font-semibold border-primary/40" : "text-muted-foreground",
               )}
-            />
-            {desc.short}
-            <span className="text-[10px] font-mono text-muted-foreground opacity-75">
-              {LANG_LABEL[m.language] ?? ""}
-            </span>
-          </ToggleGroupItem>
-        );
-      })}
-    </ToggleGroup>
+            >
+              <span
+                className={cn(
+                  "inline-block h-1.5 w-1.5 rounded-full shrink-0 transition-colors",
+                  active ? "bg-primary" : "bg-muted-foreground/40",
+                )}
+              />
+              <span className="whitespace-nowrap">{desc.short}</span>
+              <span className="text-[10px] font-mono text-muted-foreground opacity-75">
+                {m.type === "commentary" ? "COM" : LANG_LABEL[m.language] ?? ""}
+              </span>
+            </ToggleGroupItem>
+          );
+        })}
+      </ToggleGroup>
+    </div>
   );
 }
 

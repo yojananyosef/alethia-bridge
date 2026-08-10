@@ -37,12 +37,8 @@ import { cn } from "../lib/utils";
 const OT_BOOK_IDS = new Set(CANON.slice(0, 39).map((b) => b.id));
 const NT_BOOK_IDS = new Set(CANON.slice(39).map((b) => b.id));
 
-async function fetchModules(installedList?: string[]): Promise<ModuleInfo[]> {
-  const headers: Record<string, string> = {};
-  if (installedList && installedList.length > 0) {
-    headers["x-installed-modules"] = installedList.join(",");
-  }
-  const res = await fetch("/api/modules", { cache: "no-store", headers });
+async function fetchModules(): Promise<ModuleInfo[]> {
+  const res = await fetch("/api/modules", { cache: "no-store" });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const body = (await res.json()) as { modules: ModuleInfo[] };
   return body.modules;
@@ -142,6 +138,7 @@ export function PanelLeftNavigation() {
   const [testamentFilter, setTestamentFilter] = useState<"ALL" | "OT" | "NT">("ALL");
   const [readerVersionsOpen, setReaderVersionsOpen] = useState(true);
   const [biblesOpen, setBiblesOpen] = useState(true);
+  const [resourcesOpen, setResourcesOpen] = useState(true);
   const [readerOptionsOpen, setReaderOptionsOpen] = useState(false);
   const [modulesOpen, setModulesOpen] = useState(false);
   const [expandedBookId, setExpandedBookId] = useState<string | null>("Gen");
@@ -166,7 +163,7 @@ export function PanelLeftNavigation() {
 
   const refresh = useCallback(async () => {
     try {
-      const data = await fetchModules(installedModules.length > 0 ? installedModules : undefined);
+      const data = await fetchModules();
       setModules(data);
       setError(null);
 
@@ -207,6 +204,11 @@ export function PanelLeftNavigation() {
 
   const bibleModules = useMemo(
     () => (modules ?? []).filter((m) => m.type === "bible" && m.status === "installed"),
+    [modules],
+  );
+
+  const resourceModules = useMemo(
+    () => (modules ?? []).filter((m) => m.type !== "bible" && m.type !== "lexicon" && m.status === "installed"),
     [modules],
   );
 
@@ -398,7 +400,7 @@ export function PanelLeftNavigation() {
           </div>
 
           {readerVersionsOpen && (
-            <SidebarGroupContent className="space-y-1.5">
+            <SidebarGroupContent className="space-y-1.5 max-h-[200px] overflow-y-auto pr-0.5 scrollbar-thin">
               <div className="grid grid-cols-1 gap-1">
                 {bibleModules.map((m) => {
                   const active = activeModules.includes(m.id);
@@ -475,6 +477,96 @@ export function PanelLeftNavigation() {
             </SidebarGroupContent>
           )}
         </SidebarGroup>
+
+        {/* Grupo 1.5: Comentarios y Recursos Exegéticos */}
+        {resourceModules.length > 0 && (
+          <SidebarGroup>
+            <div className="flex items-center justify-between px-1 mb-1">
+              <SidebarGroupLabel
+                className="cursor-pointer select-none gap-1.5 font-bold uppercase tracking-wider text-[10px] text-muted-foreground hover:text-foreground"
+                onClick={() => setResourcesOpen((o) => !o)}
+              >
+                <ChevronDown
+                  className={cn("size-3.5 transition-transform duration-200", !resourcesOpen && "-rotate-90")}
+                />
+                Comentarios & Recursos
+              </SidebarGroupLabel>
+              <span className="text-[10px] font-mono text-primary font-semibold">
+                {resourceModules.filter((m) => activeModules.includes(m.id)).length} activos
+              </span>
+            </div>
+
+            {resourcesOpen && (
+              <SidebarGroupContent className="space-y-1.5 max-h-[180px] overflow-y-auto pr-0.5 scrollbar-thin">
+                <div className="grid grid-cols-1 gap-1">
+                  {resourceModules.map((m) => {
+                    const active = activeModules.includes(m.id);
+                    const lang = LANG_BADGES[m.language] ?? {
+                      label: m.language,
+                      bg: "bg-muted text-muted-foreground border-border",
+                    };
+                    const typeLabel =
+                      m.type === "commentary"
+                        ? "Comentario"
+                        : m.type === "crossref"
+                        ? "Referencias"
+                        : m.type === "devotion"
+                        ? "Devocional"
+                        : lang.label;
+                    return (
+                      <button
+                        key={m.id}
+                        onClick={() => toggleModule(m.id)}
+                        title={active ? `Desactivar ${m.name}` : `Activar ${m.name}`}
+                        className={cn(
+                          "flex w-full items-center justify-between rounded-lg border px-2.5 py-1.5 text-xs transition-all text-left",
+                          active
+                            ? "border-primary/50 bg-primary/10 text-foreground font-semibold shadow-2xs"
+                            : "border-border/60 bg-card/60 text-muted-foreground hover:bg-accent/60 hover:text-foreground",
+                        )}
+                      >
+                        <div className="flex items-center gap-2 truncate">
+                          <span
+                            className={cn(
+                              "flex size-4 shrink-0 items-center justify-center rounded-sm border transition-colors",
+                              active
+                                ? "bg-primary border-primary text-primary-foreground"
+                                : "border-border bg-background",
+                            )}
+                          >
+                            {active && <Check className="size-3 stroke-[3]" />}
+                          </span>
+                          <div className="truncate">
+                            <div className="flex items-center gap-1.5">
+                              <span className="truncate">{m.id}</span>
+                              <span
+                                className={cn(
+                                  "rounded border px-1 py-0.2 text-[9px] font-mono font-medium",
+                                  lang.bg,
+                                )}
+                              >
+                                {typeLabel}
+                              </span>
+                            </div>
+                            <p className="truncate text-[10px] font-normal text-muted-foreground">
+                              {m.name}
+                            </p>
+                          </div>
+                        </div>
+                        <span
+                          className={cn(
+                            "size-1.5 rounded-full shrink-0",
+                            active ? "bg-primary" : "bg-muted-foreground/30",
+                          )}
+                        />
+                      </button>
+                    );
+                  })}
+                </div>
+              </SidebarGroupContent>
+            )}
+          </SidebarGroup>
+        )}
 
         {/* Grupo 2: Canon Bíblico */}
         <SidebarGroup>

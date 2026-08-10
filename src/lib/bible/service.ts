@@ -46,8 +46,7 @@ export function parseModules(raw: string | null): BibleModuleId[] {
       ensureModuleDbReady(m);
       return m;
     })
-    .filter((m): m is BibleModuleId => getModule(m) !== null)
-    .slice(0, 4);
+    .filter((m): m is BibleModuleId => getModule(m) !== null);
 
   if (parsed.length === 0) {
     const primary = getPrimaryBibleModule();
