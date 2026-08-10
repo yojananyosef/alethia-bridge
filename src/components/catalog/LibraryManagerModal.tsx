@@ -76,6 +76,7 @@ export function LibraryManagerModal({
   onModuleChanged,
 }: LibraryManagerModalProps) {
   const [catalog, setCatalog] = useState<CatalogResponse | null>(null);
+  const [loading, setLoading] = useState(false);
   const [installingId, setInstallingId] = useState<string | null>(null);
   const [installProgressText, setInstallProgressText] = useState<string | null>(null);
   const [notification, setNotification] = useState<{ type: "success" | "error"; text: string } | null>(null);
