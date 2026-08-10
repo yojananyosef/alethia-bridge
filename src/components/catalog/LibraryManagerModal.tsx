@@ -84,14 +84,18 @@ export function LibraryManagerModal({
   const [activeTab, setActiveTab] = useState<"all" | "bible" | "lexicon" | "commentary" | "updates" | "installed">("all");
   const [langFilter, setLangFilter] = useState<string>("ALL");
 
-  const { activeModules, toggleModule, addInstalledModule, removeInstalledModule } = useExegesisStore();
+  const { activeModules, installedModules, toggleModule, addInstalledModule, removeInstalledModule } = useExegesisStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadCatalog = useCallback(async (forceRefresh = false) => {
     setLoading(true);
     try {
+      const headers: Record<string, string> = {
+        "x-installed-modules": (installedModules ?? []).join(","),
+      };
       const res = await fetch(`/api/catalog${forceRefresh ? "?refresh=1" : ""}`, {
         cache: "no-store",
+        headers,
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = (await res.json()) as CatalogResponse;
@@ -104,7 +108,7 @@ export function LibraryManagerModal({
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [installedModules]);
 
   useEffect(() => {
     if (open) {

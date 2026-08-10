@@ -53,6 +53,15 @@ test("API GET /api/catalog — Catálogo remoto con status de instalación y dep
   const ta = data.modules.find((m) => m.id === "TA");
   assert.ok(ta, "TA (Torres Amat) debe estar en el catálogo");
   assert.equal(ta.type, "commentary");
+
+  // 2. Probar usuario limpio con 0 módulos instalados (x-installed-modules: "")
+  const cleanReq = new Request("http://localhost/api/catalog", {
+    headers: { "x-installed-modules": "" },
+  });
+  const cleanRes = await getCatalog(cleanReq);
+  const cleanData = (await cleanRes.json()) as typeof data;
+  assert.equal(cleanData.installedCount, 0, "Usuario limpio debe tener 0 módulos instalados");
+  assert.ok(cleanData.modules.every((m) => m.installStatus === "not_installed"));
 });
 
 test("API POST /api/modules/install-remote — Instalación remota y resolución de dependencias", async () => {

@@ -160,30 +160,27 @@ function readModuleInfoUncached(moduleId: string): ModuleInfo | null {
 export function getInstalledIdsFromRequest(request?: Request): string[] | null {
   if (!request) return null;
   // 1. Header x-installed-modules
-  const header = request.headers.get("x-installed-modules");
-  if (header) {
-    const list = header.split(",").map((s) => s.trim()).filter(Boolean);
-    if (list.length > 0) return list;
+  if (request.headers.has("x-installed-modules")) {
+    const header = request.headers.get("x-installed-modules") ?? "";
+    return header.split(",").map((s) => s.trim()).filter(Boolean);
   }
   // 2. Cookie alethia_installed
   const cookieHeader = request.headers.get("cookie");
-  if (cookieHeader) {
-    const match = cookieHeader.match(/alethia_installed=([^;]+)/);
-    if (match && match[1]) {
+  if (cookieHeader && cookieHeader.includes("alethia_installed=")) {
+    const match = cookieHeader.match(/alethia_installed=([^;]*)/);
+    if (match) {
       try {
-        const val = decodeURIComponent(match[1]);
-        const list = val.split(",").map((s) => s.trim()).filter(Boolean);
-        if (list.length > 0) return list;
+        const val = decodeURIComponent(match[1] ?? "");
+        return val.split(",").map((s) => s.trim()).filter(Boolean);
       } catch {}
     }
   }
   // 3. Query param ?installed=...
   try {
     const url = new URL(request.url);
-    const q = url.searchParams.get("installed");
-    if (q) {
-      const list = q.split(",").map((s) => s.trim()).filter(Boolean);
-      if (list.length > 0) return list;
+    if (url.searchParams.has("installed")) {
+      const q = url.searchParams.get("installed") ?? "";
+      return q.split(",").map((s) => s.trim()).filter(Boolean);
     }
   } catch {}
   return null;
