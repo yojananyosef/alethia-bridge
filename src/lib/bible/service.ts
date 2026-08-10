@@ -371,42 +371,62 @@ interface LexiconRow {
 }
 
 export function getLexiconEntry(strongId: string): LexiconEntry | null {
-  const row = getLexiconDb().prepare(`SELECT * FROM diccionario WHERE strong_id = ?`).get(strongId) as
-    | LexiconRow
-    | undefined;
-  if (!row) return null;
-  let glosa: string | null = null;
   try {
-    const glosaRow = getLexiconDb()
-      .prepare(`SELECT glosa FROM glosas WHERE strong_id = ?`)
-      .get(strongId) as { glosa: string } | undefined;
-    glosa = glosaRow?.glosa ?? null;
+    const db = getLexiconDb();
+    const hasTable = db
+      .prepare(`SELECT 1 FROM sqlite_master WHERE type='table' AND name='diccionario'`)
+      .get();
+    if (!hasTable) return null;
+
+    const row = db.prepare(`SELECT * FROM diccionario WHERE strong_id = ?`).get(strongId) as
+      | LexiconRow
+      | undefined;
+    if (!row) return null;
+    let glosa: string | null = null;
+    try {
+      const glosaRow = db
+        .prepare(`SELECT glosa FROM glosas WHERE strong_id = ?`)
+        .get(strongId) as { glosa: string } | undefined;
+      glosa = glosaRow?.glosa ?? null;
+    } catch {
+      // tabla glosas ausente (lexicon.db sin derivar) — la glosa es opcional
+    }
+    return {
+      strongId: row.strong_id,
+      lemma: row.lema,
+      transliteration: row.transliteracion,
+      pronunciation: row.pronunciacion,
+      shortDefinition: row.definicion_corta,
+      detailedDefinition: row.definicion_detallada,
+      semanticDomain: row.dominio_semantico,
+      glosa,
+      language: row.idioma,
+    };
   } catch {
-    // tabla glosas ausente (lexicon.db sin derivar) — la glosa es opcional
+    return null;
   }
-  return {
-    strongId: row.strong_id,
-    lemma: row.lema,
-    transliteration: row.transliteracion,
-    pronunciation: row.pronunciacion,
-    shortDefinition: row.definicion_corta,
-    detailedDefinition: row.definicion_detallada,
-    semanticDomain: row.dominio_semantico,
-    glosa,
-    language: row.idioma,
-  };
 }
 
 export function getMorphology(code: string): MorphologyAnalysis | null {
-  const row = getLexiconDb()
-    .prepare(`SELECT * FROM parsing_gramatical WHERE morph_code = ?`)
-    .get(code) as { morph_code: string; descripcion_espanol: string; categoria_gramatical: string } | undefined;
-  if (!row) return null;
-  return {
-    code: row.morph_code,
-    description: row.descripcion_espanol,
-    category: row.categoria_gramatical,
-  };
+  try {
+    const db = getLexiconDb();
+    const hasTable = db
+      .prepare(`SELECT 1 FROM sqlite_master WHERE type='table' AND name='parsing_gramatical'`)
+      .get();
+    if (!hasTable) return null;
+
+    const row = db
+      .prepare(`SELECT * FROM parsing_gramatical WHERE morph_code = ?`)
+      .get(code) as { morph_code: string; descripcion_espanol: string; categoria_gramatical: string } | undefined;
+    if (!row) return null;
+    return {
+      code: row.morph_code,
+      description: row.descripcion_espanol,
+      category: row.categoria_gramatical,
+    };
+  } catch {
+    return null;
+  }
 }
 
 interface ProperNameRow {

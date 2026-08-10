@@ -72,6 +72,7 @@ export function PanelRightAnalysis() {
   const [catalogModalOpen, setCatalogModalOpen] = useState(false);
   const [commentaryMode, setCommentaryMode] = useState<"verse" | "chapter">("verse");
   const [copiedNoteId, setCopiedNoteId] = useState<string | null>(null);
+  const [loadingLexicon, setLoadingLexicon] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -82,9 +83,20 @@ export function PanelRightAnalysis() {
         setNombres([]);
       }
     });
-    if (!activeLexiconTerm) return;
-    fetchJson<{ lexicon: LexiconEntry }>(
+    if (!activeLexiconTerm) {
+      setLoadingLexicon(false);
+      return;
+    }
+
+    setLoadingLexicon(true);
+    const headers: Record<string, string> = {};
+    if (installedModules && installedModules.length > 0) {
+      headers["x-installed-modules"] = installedModules.join(",");
+    }
+
+    const p1 = fetchJson<{ lexicon: LexiconEntry }>(
       `/api/bible/read?lexicon=${encodeURIComponent(activeLexiconTerm)}`,
+      { headers },
     )
       .then((b) => {
         if (!cancelled) setLexicon(b.lexicon);
@@ -92,10 +104,12 @@ export function PanelRightAnalysis() {
       .catch(() => {
         if (!cancelled) setLexicon(null);
       });
-    fetchJson<{ nombres: ProperName[] }>(
+
+    const p2 = fetchJson<{ nombres: ProperName[] }>(
       `/api/bible/read?name=${encodeURIComponent(activeLexiconTerm)}&book=${encodeURIComponent(
         syncGroupA.book,
       )}`,
+      { headers },
     )
       .then((b) => {
         if (!cancelled) setNombres(b.nombres);
@@ -103,8 +117,10 @@ export function PanelRightAnalysis() {
       .catch(() => {
         if (!cancelled) setNombres([]);
       });
-    fetchJson<{ morph: MorphologyAnalysis }>(
+
+    const p3 = fetchJson<{ morph: MorphologyAnalysis }>(
       `/api/bible/read?morph=${encodeURIComponent(activeLexiconTerm)}`,
+      { headers },
     )
       .then((b) => {
         if (!cancelled) setMorph(b.morph);
@@ -113,8 +129,9 @@ export function PanelRightAnalysis() {
         if (!cancelled) setMorph(null);
       });
 
-    fetchJson<{ results?: DictionarySearchResult[] }>(
+    const p4 = fetchJson<{ results?: DictionarySearchResult[] }>(
       `/api/dictionary?q=${encodeURIComponent(activeLexiconTerm)}`,
+      { headers },
     )
       .then((b) => {
         if (!cancelled) setRelatedDictEntries(b.results?.slice(0, 2) ?? []);
@@ -123,10 +140,14 @@ export function PanelRightAnalysis() {
         if (!cancelled) setRelatedDictEntries([]);
       });
 
+    Promise.allSettled([p1, p2, p3, p4]).finally(() => {
+      if (!cancelled) setLoadingLexicon(false);
+    });
+
     return () => {
       cancelled = true;
     };
-  }, [activeLexiconTerm, syncGroupA.book]);
+  }, [activeLexiconTerm, syncGroupA.book, installedModules]);
 
   const refreshNotes = useCallback(async () => {
     try {
@@ -428,12 +449,33 @@ export function PanelRightAnalysis() {
                 </div>
               )}
             </div>
-          ) : (
+          ) : loadingLexicon ? (
             <div className="space-y-2 p-3 border border-border rounded-xl">
               <Skeleton className="h-5 w-2/3" />
               <Skeleton className="h-8 w-1/2" />
               <Skeleton className="h-4 w-3/4" />
               <Skeleton className="h-16 w-full" />
+            </div>
+          ) : (
+            <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 text-center space-y-3 animate-in fade-in-0 duration-150">
+              <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center mx-auto text-primary">
+                <BookMarked className="size-5" />
+              </div>
+              <div className="space-y-1">
+                <span className="font-mono text-xs font-bold text-primary">{activeLexiconTerm}</span>
+                <h4 className="text-xs font-bold text-foreground">Léxico Strong no instalado</h4>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  Para consultar la definición, glosa en español y análisis gramatical de <strong className="text-foreground">{activeLexiconTerm}</strong>, instala el módulo <strong>Léxico (lexicon)</strong> desde la biblioteca.
+                </p>
+              </div>
+              <Button
+                size="sm"
+                onClick={() => setCatalogModalOpen(true)}
+                className="w-full h-8 text-xs font-bold gap-1.5 bg-primary text-primary-foreground shadow-xs hover:bg-primary/90"
+              >
+                <Globe2 className="size-3.5" />
+                <span>Instalar Léxico (lexicon)</span>
+              </Button>
             </div>
           )
         ) : (

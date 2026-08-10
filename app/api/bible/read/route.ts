@@ -54,7 +54,6 @@ export async function GET(request: Request): Promise<Response> {
         await ensureModuleReadyAsync("lexicon");
       }
       const entry = getLexiconEntry(lexicon.toUpperCase());
-      if (!entry) return Response.json({ error: "Strong no encontrado" }, { status: 404 });
       return Response.json({ lexicon: entry });
     }
     const morph = url.searchParams.get("morph");
@@ -63,7 +62,6 @@ export async function GET(request: Request): Promise<Response> {
         await ensureModuleReadyAsync("lexicon");
       }
       const analysis = getMorphology(morph.toUpperCase());
-      if (!analysis) return Response.json({ error: "Código morfológico no encontrado" }, { status: 404 });
       return Response.json({ morph: analysis });
     }
 
