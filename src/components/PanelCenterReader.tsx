@@ -72,7 +72,7 @@ function ModuleBar({
   toggleModule: (id: string) => void;
 }) {
   const available = modules.filter(
-    (m) => (m.type === "bible" || m.type === "commentary") && m.status === "installed",
+    (m) => m.type === "bible" && m.status === "installed",
   );
   return (
     <div className="max-w-[450px] overflow-x-auto scrollbar-none py-0.5">

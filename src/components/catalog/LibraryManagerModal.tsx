@@ -145,7 +145,7 @@ export function LibraryManagerModal({
       const allNewIds = [moduleItem.id, ...installedDeps];
 
       for (const id of allNewIds) {
-        addInstalledModule(id);
+        addInstalledModule(id, id === moduleItem.id ? moduleItem.type : undefined);
       }
 
       if (moduleItem.type === "bible" && !activeModules.includes(moduleItem.id)) {
@@ -257,9 +257,6 @@ export function LibraryManagerModal({
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       removeInstalledModule(moduleItem.id);
-      if (activeModules.includes(moduleItem.id)) {
-        toggleModule(moduleItem.id);
-      }
 
       setCatalog((prev) => {
         if (!prev) return null;

@@ -2,10 +2,12 @@ import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { getDictionaryEntry, searchDictionary } from "../src/lib/dictionary/service.ts";
 import { GET as getDictionary } from "../app/api/dictionary/route.ts";
+import { ensureModuleReadyAsync } from "../src/lib/db/sqlite.ts";
 import type { DictionarySearchResponse } from "../src/types/dictionary.ts";
 
 describe("Bible Dictionary Subsystem (EASTON)", () => {
-  test("searchDictionary busca artículos con FTS5/LIKE y responde en < 30ms", () => {
+  test("searchDictionary busca artículos con FTS5/LIKE y responde en < 30ms", async () => {
+    await ensureModuleReadyAsync("EASTON");
     // Warmup
     searchDictionary("Jerusalem", "EASTON");
 
@@ -18,7 +20,8 @@ describe("Bible Dictionary Subsystem (EASTON)", () => {
     assert.ok(res.results.some((r) => r.term.toLowerCase().includes("jerusalem")));
   });
 
-  test("getDictionaryEntry obtiene el artículo completo con definición", () => {
+  test("getDictionaryEntry obtiene el artículo completo con definición", async () => {
+    await ensureModuleReadyAsync("EASTON");
     const entry = getDictionaryEntry("jerusalem", "EASTON");
     assert.ok(entry !== null, "Debe existir la entrada jerusalem");
     assert.equal(entry?.term, "Jerusalem");

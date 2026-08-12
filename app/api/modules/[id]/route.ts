@@ -1,7 +1,7 @@
 import { rmSync, existsSync } from "node:fs";
 import path from "node:path";
 import { clearModuleInfoCache, getModule, setModuleEnabled } from "../../../../src/lib/modules/registry.ts";
-import { closeModuleDb, MODULES_DIR, TMP_MODULES_DIR } from "../../../../src/lib/db/sqlite.ts";
+import { closeModuleDb, ensureModuleReadyAsync, MODULES_DIR, TMP_MODULES_DIR } from "../../../../src/lib/db/sqlite.ts";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +16,7 @@ export async function PATCH(
     if (typeof body.enabled !== "boolean") {
       return Response.json({ error: "campo 'enabled' (boolean) requerido" }, { status: 400 });
     }
+    await ensureModuleReadyAsync(id);
     const updated = setModuleEnabled(id, body.enabled);
     if (!updated) return Response.json({ error: "módulo no instalado" }, { status: 404 });
     return Response.json({ module: updated });
@@ -33,11 +34,25 @@ export async function DELETE(_request: Request, ctx: RouteContext<"/api/modules/
     const { id } = await ctx.params;
     closeModuleDb(id);
     clearModuleInfoCache(id);
+
+    const removeFileSafely = async (filePath: string) => {
+      if (!existsSync(/*turbopackIgnore: true*/ filePath)) return;
+      for (let attempt = 0; attempt < 8; attempt++) {
+        try {
+          rmSync(/*turbopackIgnore: true*/ filePath, { force: true });
+          return;
+        } catch {
+          if (attempt === 7) break;
+          await new Promise((resolve) => setTimeout(resolve, 30));
+        }
+      }
+    };
+
     for (const ext of [".db", ".db-wal", ".db-shm", ".db-journal"]) {
       const file = path.join(/*turbopackIgnore: true*/ MODULES_DIR, `${id}${ext}`);
-      if (existsSync(/*turbopackIgnore: true*/ file)) rmSync(/*turbopackIgnore: true*/ file);
+      await removeFileSafely(file);
       const tmpFile = path.join(/*turbopackIgnore: true*/ TMP_MODULES_DIR, `${id}${ext}`);
-      if (existsSync(/*turbopackIgnore: true*/ tmpFile)) rmSync(/*turbopackIgnore: true*/ tmpFile);
+      await removeFileSafely(tmpFile);
     }
     clearModuleInfoCache(id);
     return Response.json({ ok: true, moduleId: id });

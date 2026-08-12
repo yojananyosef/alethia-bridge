@@ -41,8 +41,8 @@ interface ExegesisActions {
   setSyncGroupA: (ref: SyncGroupReference) => void;
   setActiveTheme: (theme: ThemeId) => void;
   toggleModule: (moduleId: string) => void;
-  syncInstalledModules: (moduleIds: string[], preferredActiveModuleId?: string | null) => void;
-  addInstalledModule: (moduleId: string) => void;
+  syncInstalledModules: (moduleIds: string[], availableBibleIds?: string[], preferredActiveModuleId?: string | null) => void;
+  addInstalledModule: (moduleId: string, type?: string) => void;
   removeInstalledModule: (moduleId: string) => void;
   bumpModulesRevision: () => void;
   setReaderLayout: (layout: ReaderLayout) => void;
@@ -160,19 +160,32 @@ export const useExegesisStore = create<ExegesisStore>()(
       setActiveHighlightColor: (color) => set({ activeHighlightColor: color }),
       setRightSidebarOpen: (isRightSidebarOpen) => set({ isRightSidebarOpen }),
       toggleRightSidebar: () => set((s) => ({ isRightSidebarOpen: !s.isRightSidebarOpen })),
-      syncInstalledModules: (moduleIds, preferredActiveModuleId = null) =>
+      syncInstalledModules: (moduleIds, availableBibleIds, preferredActiveModuleId = null) =>
         set((state) => {
           const installedModules = normalizeModuleIds(moduleIds);
+          const bibleSet = availableBibleIds && availableBibleIds.length > 0 ? new Set(availableBibleIds) : null;
+
           let activeModules = normalizeModuleIds(
-            state.activeModules.filter((moduleId) => installedModules.includes(moduleId)),
+            state.activeModules.filter((moduleId) =>
+              installedModules.includes(moduleId) && (bibleSet === null || bibleSet.has(moduleId)),
+            ),
           );
 
-          if (activeModules.length === 0 && installedModules.length > 0) {
-            const defaultId =
-              (preferredActiveModuleId && installedModules.includes(preferredActiveModuleId))
-                ? preferredActiveModuleId
-                : installedModules.find((id) => id !== "lexicon" && id !== "TSK") || installedModules[0];
-            activeModules = [defaultId];
+          if (activeModules.length === 0) {
+            if (bibleSet && bibleSet.size > 0) {
+              const defaultBible =
+                (preferredActiveModuleId && bibleSet.has(preferredActiveModuleId))
+                  ? preferredActiveModuleId
+                  : Array.from(bibleSet)[0];
+              activeModules = [defaultBible];
+            } else if (installedModules.length > 0) {
+              const defaultId =
+                (preferredActiveModuleId && installedModules.includes(preferredActiveModuleId))
+                  ? preferredActiveModuleId
+                  : installedModules.find((id) => id !== "lexicon" && id !== "TSK" && id !== "EASTON" && id !== "MHC") ||
+                    installedModules[0];
+              activeModules = [defaultId];
+            }
           }
 
           if (
@@ -193,7 +206,7 @@ export const useExegesisStore = create<ExegesisStore>()(
         set((state) => {
           const has = state.activeModules.includes(moduleId);
           if (has) {
-            // Si es el único módulo activo, no permitir deseleccionarlo (siempre debe quedar al menos 1 biblia)
+            // Si es el único módulo bíblico activo, no permitir deseleccionarlo
             if (state.activeModules.length <= 1) {
               return state;
             }
@@ -203,11 +216,11 @@ export const useExegesisStore = create<ExegesisStore>()(
             };
           }
           return {
-            activeModules: [...state.activeModules, moduleId],
+            activeModules: normalizeModuleIds([...state.activeModules, moduleId]),
             modulesRevision: state.modulesRevision + 1,
           };
         }),
-      addInstalledModule: (moduleId) =>
+      addInstalledModule: (moduleId, type) =>
         set((state) => {
           const list = normalizeModuleIds(
             state.installedModules.includes(moduleId)
@@ -215,8 +228,12 @@ export const useExegesisStore = create<ExegesisStore>()(
               : [...state.installedModules, moduleId],
           );
           let active = state.activeModules;
-          if (!active.includes(moduleId)) {
+          // Solo se agrega a activeModules si es de tipo "bible" o si el lector no tiene módulos activos
+          const isBible = type === "bible" || (!type && !["lexicon", "TSK", "MHC", "EASTON", "SPURGEON-ME", "CALVIN", "TA"].includes(moduleId));
+          if (isBible && !active.includes(moduleId)) {
             active = normalizeModuleIds([...active, moduleId]);
+          } else if (active.length === 0 && isBible) {
+            active = [moduleId];
           }
           syncInstalledCookie(list);
           return {
@@ -230,7 +247,7 @@ export const useExegesisStore = create<ExegesisStore>()(
           const list = normalizeModuleIds(state.installedModules.filter((m) => m !== moduleId));
           let active = normalizeModuleIds(state.activeModules.filter((m) => m !== moduleId));
           if (active.length === 0 && list.length > 0) {
-            const nextBible = list.find((id) => id !== moduleId && id !== "lexicon");
+            const nextBible = list.find((id) => !["lexicon", "TSK", "MHC", "EASTON", "SPURGEON-ME", "CALVIN", "TA"].includes(id));
             if (nextBible) active = [nextBible];
           }
           syncInstalledCookie(list);

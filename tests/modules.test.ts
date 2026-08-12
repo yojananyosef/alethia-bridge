@@ -1,8 +1,8 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-import { rmSync } from "node:fs";
+import { rmSync, existsSync } from "node:fs";
 import path from "node:path";
-import { createDatabase } from "../src/lib/db/sqlite.ts";
+import { createDatabase, ensureModuleReadyAsync } from "../src/lib/db/sqlite.ts";
 import { zipSync } from "fflate";
 import { GET, POST } from "../app/api/modules/route.ts";
 import { DELETE, PATCH } from "../app/api/modules/[id]/route.ts";
@@ -24,6 +24,12 @@ async function listModules(): Promise<ModuleInfo[]> {
 
 describe("API /api/modules", () => {
   test("lista módulos instalados con manifest y canon", async () => {
+    await Promise.all([
+      ensureModuleReadyAsync("RV1909"),
+      ensureModuleReadyAsync("SBLGNT"),
+      ensureModuleReadyAsync("lexicon"),
+    ]);
+
     // Asegurar que RV1909 esté habilitado inicialmente
     await PATCH(
       new Request("http://localhost/api/modules/RV1909", {
@@ -68,8 +74,10 @@ describe("API /api/modules", () => {
       assert.equal(body.module.status, "disabled");
 
       const after = await listModules();
-      assert.equal(after.find((m) => m.id === "RV1909")!.status, "disabled");
+      const rv = after.find((m) => m.id === "RV1909")!;
+      assert.equal(rv.status, "disabled");
     } finally {
+      // Restaurar
       await PATCH(
         new Request("http://localhost/api/modules/RV1909", {
           method: "PATCH",
@@ -82,10 +90,18 @@ describe("API /api/modules", () => {
   });
 
   test("instala y desinstala un paquete .abmod (módulo de comentario)", async () => {
+    const target = path.join(MODULES_DIR, `${TEST_ID}.db`);
+    if (existsSync(target)) {
+      try {
+        rmSync(target, { force: true });
+      } catch {}
+    }
+
     // Construir el paquete de prueba en memoria
-    const tmp = path.join(MODULES_DIR, `.fixture-${TEST_ID}.db`);
+    const tmp = path.join(MODULES_DIR, `.fixture-${TEST_ID}-${Date.now()}.db`);
     const db = createDatabase(tmp);
-    db.exec(`CREATE TABLE meta (clave TEXT PRIMARY KEY, valor TEXT NOT NULL);`);
+    db.exec(`CREATE TABLE IF NOT EXISTS meta (clave TEXT PRIMARY KEY, valor TEXT NOT NULL);
+             CREATE TABLE IF NOT EXISTS comentarios (id_comentario INTEGER PRIMARY KEY, libro_id TEXT, capitulo INTEGER, versiculo INTEGER, texto TEXT);`);
     const ins = db.prepare(`INSERT INTO meta (clave, valor) VALUES (?, ?)`);
     const manifest = {
       id: TEST_ID,
@@ -110,7 +126,9 @@ describe("API /api/modules", () => {
       },
       { level: 1 },
     );
-    rmSync(tmp);
+    try {
+      rmSync(tmp, { force: true });
+    } catch {}
 
     // POST instala
     const form = new FormData();

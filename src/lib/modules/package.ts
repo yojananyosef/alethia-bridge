@@ -112,7 +112,7 @@ export function installModuleZip(
 
   const writableDir = getWritableModulesDir();
   const target = path.join(writableDir, `${manifest.id}.db`);
-  const tmp = path.join(writableDir, `.install-${manifest.id}.db`);
+  const tmp = path.join(writableDir, `.install-${manifest.id}-${Date.now()}.db`);
 
   try {
     writeFileSync(tmp, dbBytes);
@@ -134,19 +134,36 @@ export function installModuleZip(
       strongScheme: manifest.strongScheme ?? "",
       bookOrder: (manifest.bookOrder ?? []).join(","),
     });
-    db.exec("PRAGMA journal_mode = DELETE;");
+    try {
+      db.exec("PRAGMA journal_mode = DELETE;");
+    } catch {}
     db.close();
+
+    closeModuleDb(manifest.id);
+    clearModuleInfoCache(manifest.id);
+
     if (existsSync(target)) {
       try {
-        closeModuleDb(manifest.id);
-        clearModuleInfoCache(manifest.id);
-        rmSync(target);
+        rmSync(target, { force: true });
       } catch {}
     }
-    renameSync(tmp, target);
+
+    try {
+      copyFileSync(tmp, target);
+      try {
+        rmSync(tmp, { force: true });
+      } catch {}
+    } catch {
+      renameSync(tmp, target);
+    }
+
     clearModuleInfoCache(manifest.id);
   } catch (err) {
-    if (existsSync(tmp)) rmSync(tmp);
+    if (existsSync(tmp)) {
+      try {
+        rmSync(tmp, { force: true });
+      } catch {}
+    }
     return { ok: false, error: err instanceof Error ? err.message : "error al escribir el módulo" };
   }
 

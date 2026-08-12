@@ -169,7 +169,7 @@ export function PanelLeftNavigation() {
       setError(null);
 
       const availableIds = data.map((m) => m.id);
-      const bibles = data.filter((m) => m.type === "bible" && m.status === "installed");
+      const bibleIds = data.filter((m) => m.type === "bible" && m.status === "installed").map((m) => m.id);
       const needsInstalledSync =
         availableIds.length > 0 &&
         (
@@ -178,14 +178,12 @@ export function PanelLeftNavigation() {
         );
 
       if (needsInstalledSync) {
-        syncInstalledModules(availableIds, bibles[0]?.id ?? null);
-      } else {
+        syncInstalledModules(availableIds, bibleIds, bibleIds[0] ?? null);
+      } else if (bibleIds.length > 0) {
         // Auto-activación si hay biblias instaladas pero ninguna activa en el lector
-        if (bibles.length > 0) {
-          const hasActive = bibles.some((b) => activeModules.includes(b.id));
-          if (!hasActive) {
-            toggleModule(bibles[0].id);
-          }
+        const hasActive = bibleIds.some((id) => activeModules.includes(id));
+        if (!hasActive) {
+          toggleModule(bibleIds[0]);
         }
       }
     } catch (e) {

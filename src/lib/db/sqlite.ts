@@ -351,7 +351,12 @@ export function getLexiconDb(): Database {
 export function closeModuleDb(moduleId: string): void {
   const db = moduleCache.get(moduleId);
   if (db) {
-    db.close();
+    try {
+      db.exec("PRAGMA wal_checkpoint(TRUNCATE);");
+    } catch {}
+    try {
+      db.close();
+    } catch {}
     moduleCache.delete(moduleId);
   }
 }
