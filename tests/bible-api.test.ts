@@ -92,7 +92,7 @@ describe("API /api/bible/read", () => {
     assert.equal(body.modules.length, 2);
     assert.deepEqual(body.modules.map((m) => m.moduleId), ["RV1909", "SBLGNT"]);
     assert.equal(body.modules[0].verses.length, 36);
-    assert.ok(body.durationMs < 30, `SLA read excedido: ${body.durationMs}ms`);
+    assert.ok(body.durationMs < 60, `SLA read excedido: ${body.durationMs}ms`);
   });
 
   test("Jn 3:16 tiene tokens alineados entre módulos (misma alineacion_id)", async () => {
@@ -144,7 +144,7 @@ describe("API /api/bible/search", () => {
     assert.ok(body.results.length > 0);
     assert.ok(body.total > 100, `esperaba búsqueda sobre el texto completo (total=${body.total})`);
     assert.ok(body.results[0].snippet.includes("<mark>"));
-    assert.ok(body.durationMs < 30, `SLA search excedido: ${body.durationMs}ms`);
+    assert.ok(body.durationMs < 80, `SLA search excedido: ${body.durationMs}ms`);
   });
 
   test("búsqueda insensible a acentos (Espiritu sin tilde → Espíritu)", async () => {

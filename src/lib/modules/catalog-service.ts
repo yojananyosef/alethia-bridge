@@ -273,6 +273,7 @@ export async function downloadAndInstallRemoteModule(
 
   // 3. Obtener el binario .abmod (probar downloadUrl + CDN de respaldo raw.githubusercontent.com)
   let zipBytes: Uint8Array | null = null;
+  let isRemoteDownload = false;
 
   const candidateUrls: string[] = [];
   if (downloadUrl && /^https?:\/\//.test(downloadUrl)) {
@@ -286,18 +287,24 @@ export async function downloadAndInstallRemoteModule(
   candidateUrls.push(`${rawBase}/${moduleId}.abmod`);
 
   for (const url of Array.from(new Set(candidateUrls))) {
-    try {
-      const res = await fetch(url, {
-        headers: { "User-Agent": "Alethia-Bridge/0.1.0" },
-        signal: AbortSignal.timeout(25000),
-      });
-      if (res.ok) {
-        zipBytes = new Uint8Array(await res.arrayBuffer());
-        break;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const res = await fetch(url, {
+          headers: { "User-Agent": "Alethia-Bridge/0.1.0" },
+          signal: AbortSignal.timeout(60000),
+        });
+        if (res.ok) {
+          zipBytes = new Uint8Array(await res.arrayBuffer());
+          isRemoteDownload = true;
+          break;
+        }
+      } catch {
+        if (attempt < 2) {
+          await new Promise((r) => setTimeout(r, 600 * (attempt + 1)));
+        }
       }
-    } catch {
-      // Continuar con el siguiente candidato
     }
+    if (zipBytes) break;
   }
 
   if (!zipBytes) {
@@ -310,8 +317,8 @@ export async function downloadAndInstallRemoteModule(
     );
   }
 
-  // 4. Validación de integridad SHA-256
-  if (expectedSha256) {
+  // 4. Validación de integridad SHA-256 (para descargas remotas o verificación explícita)
+  if (expectedSha256 && (isRemoteDownload || params.sha256)) {
     const actualSha256 = createHash("sha256").update(zipBytes).digest("hex").toLowerCase();
     if (actualSha256 !== expectedSha256) {
       throw new Error(

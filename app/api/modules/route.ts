@@ -1,5 +1,6 @@
 import { getInstalledIdsFromRequest, listModules } from "../../../src/lib/modules/registry.ts";
 import { installModuleZip } from "../../../src/lib/modules/package.ts";
+import { ensureModuleReadyAsync } from "../../../src/lib/db/sqlite.ts";
 import type { ModuleListResponse } from "../../../src/types/module.ts";
 
 export const dynamic = "force-dynamic";
@@ -11,6 +12,9 @@ export async function GET(request: Request): Promise<Response> {
   try {
     const t0 = performance.now();
     const installedFilter = getInstalledIdsFromRequest(request);
+    if (installedFilter && installedFilter.length > 0) {
+      await Promise.all(installedFilter.map((id) => ensureModuleReadyAsync(id).catch(() => null)));
+    }
     const body: ModuleListResponse = {
       modules: listModules(installedFilter),
       durationMs: performance.now() - t0,

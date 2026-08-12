@@ -341,7 +341,12 @@ export function PanelCenterReader() {
 
   useEffect(() => {
     let cancelled = false;
-    void fetch("/api/modules", { cache: "no-store" })
+    const installed = useExegesisStore.getState().installedModules;
+    const headers: Record<string, string> = {};
+    if (installed && installed.length > 0) {
+      headers["x-installed-modules"] = installed.join(",");
+    }
+    void fetch("/api/modules", { cache: "no-store", headers })
       .then((r) => r.json())
       .then((d: { modules?: ModuleInfo[] }) => {
         if (!cancelled) {

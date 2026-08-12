@@ -38,7 +38,12 @@ const OT_BOOK_IDS = new Set(CANON.slice(0, 39).map((b) => b.id));
 const NT_BOOK_IDS = new Set(CANON.slice(39).map((b) => b.id));
 
 async function fetchModules(): Promise<ModuleInfo[]> {
-  const res = await fetch("/api/modules", { cache: "no-store" });
+  const installed = useExegesisStore.getState().installedModules;
+  const headers: Record<string, string> = {};
+  if (installed && installed.length > 0) {
+    headers["x-installed-modules"] = installed.join(",");
+  }
+  const res = await fetch("/api/modules", { cache: "no-store", headers });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const body = (await res.json()) as { modules: ModuleInfo[] };
   return body.modules;
