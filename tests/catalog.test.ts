@@ -81,9 +81,8 @@ test("API POST /api/modules/install-remote — Instalación remota y resolución
     body: JSON.stringify({ moduleId: "TA", force: true }),
   });
   const resTA = await installRemote(reqTA);
-  assert.equal(resTA.status, 200);
-
-  const dataTA = (await resTA.json()) as { ok: boolean; moduleId: string };
+  const dataTA = (await resTA.json()) as { ok: boolean; moduleId: string; error?: string };
+  assert.equal(resTA.status, 200, `installRemote falló: ${JSON.stringify(dataTA)}`);
   assert.equal(dataTA.ok, true);
   assert.equal(dataTA.moduleId, "TA");
 

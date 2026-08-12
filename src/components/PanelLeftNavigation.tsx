@@ -147,9 +147,10 @@ export function PanelLeftNavigation() {
 
   const {
     syncGroupA,
-    installedModules,
     activeModules,
+    activeResources,
     toggleModule,
+    toggleResourceModule,
     syncInstalledModules,
     readerLayout,
     setReaderLayout,
@@ -170,18 +171,22 @@ export function PanelLeftNavigation() {
 
       const availableIds = data.map((m) => m.id);
       const bibleIds = data.filter((m) => m.type === "bible" && m.status === "installed").map((m) => m.id);
+      const resourceIds = data.filter((m) => m.type !== "bible" && m.type !== "lexicon" && m.status === "installed").map((m) => m.id);
+
+      const currentInstalled = useExegesisStore.getState().installedModules;
+      const currentActive = useExegesisStore.getState().activeModules;
+
       const needsInstalledSync =
         availableIds.length > 0 &&
         (
-          installedModules.length !== availableIds.length ||
-          availableIds.some((id) => !installedModules.includes(id))
+          currentInstalled.length !== availableIds.length ||
+          availableIds.some((id) => !currentInstalled.includes(id))
         );
 
       if (needsInstalledSync) {
-        syncInstalledModules(availableIds, bibleIds, bibleIds[0] ?? null);
+        syncInstalledModules(availableIds, bibleIds, resourceIds, bibleIds[0] ?? null);
       } else if (bibleIds.length > 0) {
-        // Auto-activación si hay biblias instaladas pero ninguna activa en el lector
-        const hasActive = bibleIds.some((id) => activeModules.includes(id));
+        const hasActive = bibleIds.some((id) => currentActive.includes(id));
         if (!hasActive) {
           toggleModule(bibleIds[0]);
         }
@@ -189,7 +194,7 @@ export function PanelLeftNavigation() {
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
-  }, [installedModules, activeModules, toggleModule, syncInstalledModules]);
+  }, [syncInstalledModules, toggleModule]);
 
   useEffect(() => {
     void Promise.resolve().then(refresh);
@@ -493,7 +498,7 @@ export function PanelLeftNavigation() {
                 Comentarios & Recursos
               </SidebarGroupLabel>
               <span className="text-[10px] font-mono text-primary font-semibold">
-                {resourceModules.filter((m) => activeModules.includes(m.id)).length} activos
+                {resourceModules.filter((m) => activeResources.includes(m.id)).length} activos
               </span>
             </div>
 
@@ -501,7 +506,7 @@ export function PanelLeftNavigation() {
               <SidebarGroupContent className="space-y-1.5 max-h-[180px] overflow-y-auto pr-0.5 scrollbar-thin">
                 <div className="grid grid-cols-1 gap-1">
                   {resourceModules.map((m) => {
-                    const active = activeModules.includes(m.id);
+                    const active = activeResources.includes(m.id);
                     const lang = LANG_BADGES[m.language] ?? {
                       label: m.language,
                       bg: "bg-muted text-muted-foreground border-border",
@@ -517,7 +522,7 @@ export function PanelLeftNavigation() {
                     return (
                       <button
                         key={m.id}
-                        onClick={() => toggleModule(m.id)}
+                        onClick={() => toggleResourceModule(m.id)}
                         title={active ? `Desactivar ${m.name}` : `Activar ${m.name}`}
                         className={cn(
                           "flex w-full items-center justify-between rounded-lg border px-2.5 py-1.5 text-xs transition-all text-left",

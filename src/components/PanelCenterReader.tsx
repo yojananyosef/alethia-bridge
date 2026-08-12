@@ -348,7 +348,7 @@ export function PanelCenterReader() {
           const list = d.modules ?? [];
           setModules(list);
           const bibles = list.filter((m) => m.type === "bible" && m.status === "installed");
-          if (bibles.length > 0 && activeModules.length === 0) {
+          if (bibles.length > 0 && useExegesisStore.getState().activeModules.length === 0) {
             toggleModule(bibles[0].id);
           }
         }
@@ -357,7 +357,7 @@ export function PanelCenterReader() {
     return () => {
       cancelled = true;
     };
-  }, [modulesRevision, activeModules.length, toggleModule]);
+  }, [modulesRevision, toggleModule]);
 
   const load = useCallback(async () => {
     const activeStr = activeModules.length > 0 ? activeModules.join(",") : "";

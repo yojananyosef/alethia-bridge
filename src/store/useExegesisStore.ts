@@ -17,8 +17,10 @@ interface ExegesisState {
   syncGroupA: SyncGroupReference;
   /** Tema de lectura. */
   activeTheme: ThemeId;
-  /** Módulos activos en el lector (orden = orden de visualización). */
+  /** Módulos activos en el lector (orden = orden de visualización) - Solo Biblias. */
   activeModules: string[];
+  /** Recursos exegéticos activos (comentarios, referencias cruzadas, devocionales). */
+  activeResources: string[];
   /** Módulos instalados por el usuario persistidos en el cliente. */
   installedModules: string[];
   /** Layout del lector: "interleaved" (interlineal en línea) o "columns" (biblia paralela por columnas). */
@@ -41,7 +43,13 @@ interface ExegesisActions {
   setSyncGroupA: (ref: SyncGroupReference) => void;
   setActiveTheme: (theme: ThemeId) => void;
   toggleModule: (moduleId: string) => void;
-  syncInstalledModules: (moduleIds: string[], availableBibleIds?: string[], preferredActiveModuleId?: string | null) => void;
+  toggleResourceModule: (moduleId: string) => void;
+  syncInstalledModules: (
+    moduleIds: string[],
+    availableBibleIds?: string[],
+    availableResourceIds?: string[],
+    preferredActiveModuleId?: string | null,
+  ) => void;
   addInstalledModule: (moduleId: string, type?: string) => void;
   removeInstalledModule: (moduleId: string) => void;
   bumpModulesRevision: () => void;
@@ -81,6 +89,7 @@ function getInitialPersistedState() {
     syncGroupA: { book: "Gen", chapter: 1, verse: 1 },
     activeTheme: "academic-paper" as ThemeId,
     activeModules: [] as string[],
+    activeResources: ["MHC", "TSK", "EASTON", "SPURGEON-ME", "CALVIN", "TA"] as string[],
     installedModules: [] as string[],
     readerLayout: "interleaved" as ReaderLayout,
     fontSize: "base" as ReaderFontSize,
@@ -110,6 +119,7 @@ function getInitialPersistedState() {
             : fallback.syncGroupA,
           installedModules: parsed.state.installedModules ?? fallback.installedModules,
           activeModules: parsed.state.activeModules ?? fallback.activeModules,
+          activeResources: parsed.state.activeResources ?? fallback.activeResources,
         };
         syncInstalledCookie(normalizeModuleIds(state.installedModules));
         return state;
@@ -132,6 +142,7 @@ export const useExegesisStore = create<ExegesisStore>()(
       syncGroupA: initial.syncGroupA,
       activeTheme: initial.activeTheme,
       activeModules: initial.activeModules,
+      activeResources: initial.activeResources,
       installedModules: initial.installedModules,
       readerLayout: initial.readerLayout,
       fontSize: initial.fontSize,
@@ -160,10 +171,11 @@ export const useExegesisStore = create<ExegesisStore>()(
       setActiveHighlightColor: (color) => set({ activeHighlightColor: color }),
       setRightSidebarOpen: (isRightSidebarOpen) => set({ isRightSidebarOpen }),
       toggleRightSidebar: () => set((s) => ({ isRightSidebarOpen: !s.isRightSidebarOpen })),
-      syncInstalledModules: (moduleIds, availableBibleIds, preferredActiveModuleId = null) =>
+      syncInstalledModules: (moduleIds, availableBibleIds, availableResourceIds, preferredActiveModuleId = null) =>
         set((state) => {
           const installedModules = normalizeModuleIds(moduleIds);
           const bibleSet = availableBibleIds && availableBibleIds.length > 0 ? new Set(availableBibleIds) : null;
+          const resourceSet = availableResourceIds && availableResourceIds.length > 0 ? new Set(availableResourceIds) : null;
 
           let activeModules = normalizeModuleIds(
             state.activeModules.filter((moduleId) =>
@@ -182,15 +194,23 @@ export const useExegesisStore = create<ExegesisStore>()(
               const defaultId =
                 (preferredActiveModuleId && installedModules.includes(preferredActiveModuleId))
                   ? preferredActiveModuleId
-                  : installedModules.find((id) => id !== "lexicon" && id !== "TSK" && id !== "EASTON" && id !== "MHC") ||
+                  : installedModules.find((id) => !["lexicon", "TSK", "EASTON", "MHC", "SPURGEON-ME", "CALVIN", "TA"].includes(id)) ||
                     installedModules[0];
               activeModules = [defaultId];
             }
           }
 
+          let activeResources = normalizeModuleIds(
+            state.activeResources.filter((id) => installedModules.includes(id) && (resourceSet === null || resourceSet.has(id))),
+          );
+          if (activeResources.length === 0 && resourceSet && resourceSet.size > 0) {
+            activeResources = Array.from(resourceSet);
+          }
+
           if (
             areListsEqual(installedModules, state.installedModules) &&
-            areListsEqual(activeModules, state.activeModules)
+            areListsEqual(activeModules, state.activeModules) &&
+            areListsEqual(activeResources, state.activeResources)
           ) {
             return state;
           }
@@ -199,6 +219,7 @@ export const useExegesisStore = create<ExegesisStore>()(
           return {
             installedModules,
             activeModules,
+            activeResources,
             modulesRevision: state.modulesRevision + 1,
           };
         }),
@@ -220,6 +241,16 @@ export const useExegesisStore = create<ExegesisStore>()(
             modulesRevision: state.modulesRevision + 1,
           };
         }),
+      toggleResourceModule: (moduleId) =>
+        set((state) => {
+          const has = state.activeResources.includes(moduleId);
+          return {
+            activeResources: has
+              ? state.activeResources.filter((m) => m !== moduleId)
+              : normalizeModuleIds([...state.activeResources, moduleId]),
+            modulesRevision: state.modulesRevision + 1,
+          };
+        }),
       addInstalledModule: (moduleId, type) =>
         set((state) => {
           const list = normalizeModuleIds(
@@ -228,17 +259,24 @@ export const useExegesisStore = create<ExegesisStore>()(
               : [...state.installedModules, moduleId],
           );
           let active = state.activeModules;
-          // Solo se agrega a activeModules si es de tipo "bible" o si el lector no tiene módulos activos
+          let resources = state.activeResources;
+
           const isBible = type === "bible" || (!type && !["lexicon", "TSK", "MHC", "EASTON", "SPURGEON-ME", "CALVIN", "TA"].includes(moduleId));
-          if (isBible && !active.includes(moduleId)) {
-            active = normalizeModuleIds([...active, moduleId]);
-          } else if (active.length === 0 && isBible) {
-            active = [moduleId];
+          if (isBible) {
+            if (!active.includes(moduleId)) {
+              active = normalizeModuleIds([...active, moduleId]);
+            }
+          } else {
+            if (!resources.includes(moduleId)) {
+              resources = normalizeModuleIds([...resources, moduleId]);
+            }
           }
+
           syncInstalledCookie(list);
           return {
             installedModules: list,
             activeModules: active,
+            activeResources: resources,
             modulesRevision: state.modulesRevision + 1,
           };
         }),
@@ -246,6 +284,8 @@ export const useExegesisStore = create<ExegesisStore>()(
         set((state) => {
           const list = normalizeModuleIds(state.installedModules.filter((m) => m !== moduleId));
           let active = normalizeModuleIds(state.activeModules.filter((m) => m !== moduleId));
+          const resources = normalizeModuleIds(state.activeResources.filter((m) => m !== moduleId));
+
           if (active.length === 0 && list.length > 0) {
             const nextBible = list.find((id) => !["lexicon", "TSK", "MHC", "EASTON", "SPURGEON-ME", "CALVIN", "TA"].includes(id));
             if (nextBible) active = [nextBible];
@@ -254,6 +294,7 @@ export const useExegesisStore = create<ExegesisStore>()(
           return {
             installedModules: list,
             activeModules: active,
+            activeResources: resources,
             modulesRevision: state.modulesRevision + 1,
           };
         }),
@@ -271,6 +312,7 @@ export const useExegesisStore = create<ExegesisStore>()(
         syncGroupA: state.syncGroupA,
         activeTheme: state.activeTheme,
         activeModules: state.activeModules,
+        activeResources: state.activeResources,
         installedModules: state.installedModules,
         readerLayout: state.readerLayout,
         fontSize: state.fontSize,

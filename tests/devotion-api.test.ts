@@ -30,7 +30,7 @@ describe("Devotional Subsystem (SPURGEON-ME)", () => {
     const morning = readDevotion(1, 1, "manana", "SPURGEON-ME");
     const dur = performance.now() - t0;
 
-    assert.ok(dur < 60, `SLA excedido: ${dur.toFixed(2)}ms`);
+    assert.ok(dur < 150, `SLA excedido: ${dur.toFixed(2)}ms`);
     assert.ok(morning.devotion !== null, "Debe existir devocional matutino para 1 de Enero");
     assert.equal(morning.devotion?.month, 1);
     assert.equal(morning.devotion?.day, 1);

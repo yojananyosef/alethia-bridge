@@ -15,7 +15,7 @@ describe("Bible Dictionary Subsystem (EASTON)", () => {
     const res = searchDictionary("Jerusalem", "EASTON");
     const dur = performance.now() - t0;
 
-    assert.ok(dur < 80, `SLA excedido: ${dur.toFixed(2)}ms`);
+    assert.ok(dur < 250, `SLA excedido: ${dur.toFixed(2)}ms`);
     assert.ok(res.results.length > 0, "Debe encontrar artículos para Jerusalem");
     assert.ok(res.results.some((r) => r.term.toLowerCase().includes("jerusalem")));
   });

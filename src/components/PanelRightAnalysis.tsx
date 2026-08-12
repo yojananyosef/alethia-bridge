@@ -48,6 +48,7 @@ async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
 export function PanelRightAnalysis() {
   const {
     installedModules,
+    activeResources,
     activeLexiconTerm,
     setActiveLexiconTerm,
     toggleRightSidebar,
@@ -67,6 +68,14 @@ export function PanelRightAnalysis() {
   const [notes, setNotes] = useState<UserNote[]>([]);
   const [commentary, setCommentary] = useState<CommentaryModule[]>([]);
   const [crossRefs, setCrossRefs] = useState<CrossRefModule[]>([]);
+
+  const visibleCommentaries = useMemo(() => {
+    return commentary.filter((c) => activeResources.includes(c.moduleId));
+  }, [commentary, activeResources]);
+
+  const visibleCrossRefs = useMemo(() => {
+    return crossRefs.filter((cr) => activeResources.includes(cr.moduleId));
+  }, [crossRefs, activeResources]);
   const [relatedDictEntries, setRelatedDictEntries] = useState<DictionarySearchResult[]>([]);
   const [dictModalOpen, setDictModalOpen] = useState(false);
   const [dictInitialTerm, setDictInitialTerm] = useState<string | null>(null);
@@ -504,8 +513,8 @@ export function PanelRightAnalysis() {
         )}
 
         {/* Comentario bíblico (módulos type=commentary, p. ej. Torres Amat) */}
-        {commentary.length > 0 ? (
-          commentary.map((c) => {
+        {visibleCommentaries.length > 0 ? (
+          visibleCommentaries.map((c) => {
             const activeNote = c.notes.find((n) => n.verse === syncGroupA.verse);
             const notesToRender = commentaryMode === "verse" ? (activeNote ? [activeNote] : []) : c.notes;
 
@@ -606,8 +615,8 @@ export function PanelRightAnalysis() {
         )}
 
         {/* Referencias Cruzadas Temáticas (módulos type=crossref, p. ej. TSK) */}
-        {crossRefs.length > 0 ? (
-          crossRefs.map((cr) => (
+        {visibleCrossRefs.length > 0 ? (
+          visibleCrossRefs.map((cr) => (
             <div key={cr.moduleId} className="rounded-xl border border-border bg-card p-3 shadow-xs space-y-2.5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
