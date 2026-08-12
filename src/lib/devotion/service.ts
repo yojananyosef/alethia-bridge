@@ -1,4 +1,4 @@
-import { getModuleDb } from "../db/sqlite.ts";
+import { ensureModuleDbReady, getModuleDb } from "../db/sqlite.ts";
 import { getModule, listModules, readModuleInfo } from "../modules/registry.ts";
 import { parseScriptureReference } from "../bible/reference-parser.ts";
 import type { DevotionEntry, DevotionMoment, DevotionResponse, ParsedVerseRef } from "../../types/devotion.ts";

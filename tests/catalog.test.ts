@@ -64,7 +64,7 @@ test("API GET /api/catalog — Catálogo remoto con status de instalación y dep
   assert.ok(cleanData.modules.every((m) => m.installStatus === "not_installed"));
 });
 
-test("API POST /api/modules/install-remote — Instalación remota y resolución de dependencias", async () => {
+test("API POST /api/modules/install-remote — Instalación remota y resolución de dependencias", { timeout: 20000 }, async () => {
   // 1. Petición sin moduleId devuelve 400
   const reqBad = new Request("http://localhost/api/modules/install-remote", {
     method: "POST",
@@ -104,4 +104,4 @@ test("API POST /api/modules/install-remote — Instalación remota y resolución
   const resMismatch = await installRemote(reqMismatch);
   // Debe fallar por no poder descargar o sha inválido
   assert.ok(resMismatch.status === 422 || resMismatch.status === 500);
-}, 20000);
+});
