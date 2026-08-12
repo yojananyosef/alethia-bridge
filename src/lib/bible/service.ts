@@ -369,28 +369,70 @@ interface LexiconRow {
   idioma: "HEBREW" | "GREEK";
 }
 
+const tableExistsCache = new Map<string, boolean>();
+
+function hasTableInDb(db: Database, tableName: string, moduleId: string): boolean {
+  const cacheKey = `${moduleId}:${tableName}`;
+  const cached = tableExistsCache.get(cacheKey);
+  if (cached !== undefined) return cached;
+  try {
+    const has = Boolean(
+      db.prepare(`SELECT 1 FROM sqlite_master WHERE type='table' AND name=?`).get(tableName),
+    );
+    tableExistsCache.set(cacheKey, has);
+    return has;
+  } catch {
+    return false;
+  }
+}
+
+const lexiconCache = new Map<string, LexiconEntry | null>();
+const morphologyCache = new Map<string, MorphologyAnalysis | null>();
+const properNamesCache = new Map<string, ProperName[]>();
+const commentaryCache = new Map<string, { commentary: CommentaryModule[]; durationMs: number }>();
+const crossRefCache = new Map<string, { crossref: import("../../types/bible.ts").CrossRefModule[]; durationMs: number }>();
+const chapterCache = new Map<string, ReadResponse>();
+
+export function clearServiceCaches(moduleId?: string): void {
+  lexiconCache.clear();
+  morphologyCache.clear();
+  properNamesCache.clear();
+  commentaryCache.clear();
+  crossRefCache.clear();
+  chapterCache.clear();
+  if (moduleId) {
+    for (const k of tableExistsCache.keys()) {
+      if (k.startsWith(`${moduleId}:`)) tableExistsCache.delete(k);
+    }
+  } else {
+    tableExistsCache.clear();
+  }
+}
+
 export function getLexiconEntry(strongId: string): LexiconEntry | null {
+  const key = strongId.toUpperCase();
+  if (lexiconCache.has(key)) return lexiconCache.get(key) ?? null;
   try {
     const db = getLexiconDb();
-    const hasTable = db
-      .prepare(`SELECT 1 FROM sqlite_master WHERE type='table' AND name='diccionario'`)
-      .get();
-    if (!hasTable) return null;
+    if (!hasTableInDb(db, "diccionario", "lexicon")) return null;
 
-    const row = db.prepare(`SELECT * FROM diccionario WHERE strong_id = ?`).get(strongId) as
+    const row = db.prepare(`SELECT * FROM diccionario WHERE strong_id = ?`).get(key) as
       | LexiconRow
       | undefined;
-    if (!row) return null;
-    let glosa: string | null = null;
-    try {
-      const glosaRow = db
-        .prepare(`SELECT glosa FROM glosas WHERE strong_id = ?`)
-        .get(strongId) as { glosa: string } | undefined;
-      glosa = glosaRow?.glosa ?? null;
-    } catch {
-      // tabla glosas ausente (lexicon.db sin derivar) — la glosa es opcional
+    if (!row) {
+      lexiconCache.set(key, null);
+      return null;
     }
-    return {
+    let glosa: string | null = null;
+    if (hasTableInDb(db, "glosas", "lexicon")) {
+      try {
+        const glosaRow = db
+          .prepare(`SELECT glosa FROM glosas WHERE strong_id = ?`)
+          .get(key) as { glosa: string } | undefined;
+        glosa = glosaRow?.glosa ?? null;
+      } catch {}
+    }
+    const res: LexiconEntry = {
       strongId: row.strong_id,
       lemma: row.lema,
       transliteration: row.transliteracion,
@@ -401,28 +443,34 @@ export function getLexiconEntry(strongId: string): LexiconEntry | null {
       glosa,
       language: row.idioma,
     };
+    lexiconCache.set(key, res);
+    return res;
   } catch {
     return null;
   }
 }
 
 export function getMorphology(code: string): MorphologyAnalysis | null {
+  const key = code.toUpperCase();
+  if (morphologyCache.has(key)) return morphologyCache.get(key) ?? null;
   try {
     const db = getLexiconDb();
-    const hasTable = db
-      .prepare(`SELECT 1 FROM sqlite_master WHERE type='table' AND name='parsing_gramatical'`)
-      .get();
-    if (!hasTable) return null;
+    if (!hasTableInDb(db, "parsing_gramatical", "lexicon")) return null;
 
     const row = db
       .prepare(`SELECT * FROM parsing_gramatical WHERE morph_code = ?`)
-      .get(code) as { morph_code: string; descripcion_espanol: string; categoria_gramatical: string } | undefined;
-    if (!row) return null;
-    return {
+      .get(key) as { morph_code: string; descripcion_espanol: string; categoria_gramatical: string } | undefined;
+    if (!row) {
+      morphologyCache.set(key, null);
+      return null;
+    }
+    const res: MorphologyAnalysis = {
       code: row.morph_code,
       description: row.descripcion_espanol,
       category: row.categoria_gramatical,
     };
+    morphologyCache.set(key, res);
+    return res;
   } catch {
     return null;
   }
@@ -450,25 +498,19 @@ interface ProperNameRow {
 /** Nombres propios que usan un Strong, ordenados por relevancia al libro actual
  *  (los que lo mencionan primero) y por la primera referencia (más corta antes). */
 export function getProperNames(strongId: string, book?: string): ProperName[] {
+  const cacheKey = `${strongId.toUpperCase()}:${book ?? ""}`;
+  if (properNamesCache.has(cacheKey)) return properNamesCache.get(cacheKey) ?? [];
   const db = getLexiconDb();
-  let hasTable = false;
-  try {
-    hasTable = Boolean(
-      db.prepare(`SELECT 1 FROM sqlite_master WHERE type='table' AND name='nombres_propios'`).get(),
-    );
-  } catch {
-    hasTable = false;
-  }
-  if (!hasTable) return [];
+  if (!hasTableInDb(db, "nombres_propios", "lexicon")) return [];
 
   const rows = db
     .prepare(`SELECT * FROM nombres_propios WHERE strong_id = ?`)
-    .all(strongId) as ProperNameRow[];
+    .all(strongId.toUpperCase()) as ProperNameRow[];
   const bookMatch = book
     ? (r: ProperNameRow): boolean => r.libros.split(",").includes(book)
     : (): boolean => true;
   const ordered = [...rows].sort((a, b) => Number(bookMatch(b)) - Number(bookMatch(a)));
-  return ordered.map((r) => ({
+  const result: ProperName[] = ordered.map((r) => ({
     nombre: r.nombre,
     tipo: r.tipo,
     categoria: (r.categoria === "persona" || r.categoria === "lugar" || r.categoria === "otro"
@@ -487,6 +529,8 @@ export function getProperNames(strongId: string, book?: string): ProperName[] {
     geoLng: r.geo_lng,
     openbible: r.openbible,
   }));
+  properNamesCache.set(cacheKey, result);
+  return result;
 }
 
 interface CommentaryRow {
@@ -504,8 +548,13 @@ export function readCommentary(
   commentary: CommentaryModule[];
   durationMs: number;
 } {
-  const t0 = performance.now();
   const { book: bookId, chapter } = sanitizeReference(book, chapterRaw);
+  const cacheKey = `${bookId}:${chapter}:${(installedFilter ?? []).sort().join(",")}`;
+  if (commentaryCache.has(cacheKey)) {
+    return commentaryCache.get(cacheKey)!;
+  }
+
+  const t0 = performance.now();
   const altBookId =
     bookId === "John" ? "Jn" : bookId === "Jn" ? "John" : bookId === "Gen" ? "Genesis" : bookId === "Genesis" ? "Gen" : bookId;
   const commentary: CommentaryModule[] = [];
@@ -515,30 +564,28 @@ export function readCommentary(
   for (const info of candidateModules) {
     if (info.type !== "commentary" || info.status !== "installed") continue;
     try {
-      const dbPath = resolveModuleDbPath(info.id);
-      const db = createDatabase(dbPath, { readonly: true });
-      try {
-        const rows = db
-          .prepare(
-            `SELECT versiculo, texto FROM comentarios
-             WHERE (libro_id = ? OR libro_id = ?) AND capitulo = ? ORDER BY versiculo`,
-          )
-          .all(bookId, altBookId, chapter) as CommentaryRow[];
-        if (rows.length === 0) continue;
-        commentary.push({
-          moduleId: info.id,
-          name: info.name,
-          notes: rows.map((r) => ({ verse: r.versiculo, text: r.texto }) satisfies CommentaryNote),
-        });
-      } finally {
-        db.close();
-      }
+      const db = getModuleDb(info.id);
+      if (!hasTableInDb(db, "comentarios", info.id)) continue;
+      const rows = db
+        .prepare(
+          `SELECT versiculo, texto FROM comentarios
+           WHERE (libro_id = ? OR libro_id = ?) AND capitulo = ? ORDER BY versiculo`,
+        )
+        .all(bookId, altBookId, chapter) as CommentaryRow[];
+      if (rows.length === 0) continue;
+      commentary.push({
+        moduleId: info.id,
+        name: info.name,
+        notes: rows.map((r) => ({ verse: r.versiculo, text: r.texto }) satisfies CommentaryNote),
+      });
     } catch {
       // Módulo en plena instal/desinstal: se omite en vez de fallar la lectura.
     }
   }
 
-  return { commentary, durationMs: performance.now() - t0 };
+  const res = { commentary, durationMs: performance.now() - t0 };
+  commentaryCache.set(cacheKey, res);
+  return res;
 }
 
 /**
@@ -551,9 +598,14 @@ export function readCrossReferences(
   verseRaw?: string | null,
   installedFilter?: string[] | null,
 ): { crossref: import("../../types/bible.ts").CrossRefModule[]; durationMs: number } {
-  const t0 = performance.now();
   const { book: bookId, chapter } = sanitizeReference(book, chapterRaw);
   const verse = verseRaw ? Number.parseInt(verseRaw, 10) || null : null;
+  const cacheKey = `${bookId}:${chapter}:${verse ?? "all"}:${(installedFilter ?? []).sort().join(",")}`;
+  if (crossRefCache.has(cacheKey)) {
+    return crossRefCache.get(cacheKey)!;
+  }
+
+  const t0 = performance.now();
   const crossref: import("../../types/bible.ts").CrossRefModule[] = [];
 
   const candidateModules = [...listModules(installedFilter)];
@@ -564,72 +616,67 @@ export function readCrossReferences(
   for (const info of candidateModules) {
     if (info.type !== "crossref" || info.status !== "installed") continue;
     try {
-      const db = createDatabase(resolveModuleDbPath(info.id), { readonly: true });
-      try {
-        const hasTable = db
-          .prepare(`SELECT 1 FROM sqlite_master WHERE type='table' AND name='referencias_cruzadas'`)
-          .get();
-        if (!hasTable) continue;
+      const db = getModuleDb(info.id);
+      if (!hasTableInDb(db, "referencias_cruzadas", info.id)) continue;
 
-        let rows: Array<{
-          id_ref: number;
-          libro_origen: string;
-          capitulo_origen: number;
-          versiculo_origen: number;
-          libro_destino: string;
-          capitulo_destino: number;
-          versiculo_destino_inicio: number;
-          versiculo_destino_fin: number | null;
-          votos: number;
-          nota: string | null;
-        }> = [];
+      let rows: Array<{
+        id_ref: number;
+        libro_origen: string;
+        capitulo_origen: number;
+        versiculo_origen: number;
+        libro_destino: string;
+        capitulo_destino: number;
+        versiculo_destino_inicio: number;
+        versiculo_destino_fin: number | null;
+        votos: number;
+        nota: string | null;
+      }> = [];
 
-        if (verse !== null) {
-          rows = db
-            .prepare(
-              `SELECT id_ref, libro_origen, capitulo_origen, versiculo_origen, libro_destino, capitulo_destino, versiculo_destino_inicio, versiculo_destino_fin, votos, nota
-               FROM referencias_cruzadas WHERE (libro_origen = ? OR libro_origen = ?) AND capitulo_origen = ? AND versiculo_origen = ?
-               ORDER BY votos DESC, id_ref ASC`,
-            )
-            .all(bookId, altBookId, chapter, verse) as typeof rows;
-        } else {
-          rows = db
-            .prepare(
-              `SELECT id_ref, libro_origen, capitulo_origen, versiculo_origen, libro_destino, capitulo_destino, versiculo_destino_inicio, versiculo_destino_fin, votos, nota
-               FROM referencias_cruzadas WHERE (libro_origen = ? OR libro_origen = ?) AND capitulo_origen = ?
-               ORDER BY versiculo_origen ASC, votos DESC, id_ref ASC`,
-            )
-            .all(bookId, altBookId, chapter) as typeof rows;
-        }
+      if (verse !== null) {
+        rows = db
+          .prepare(
+            `SELECT id_ref, libro_origen, capitulo_origen, versiculo_origen, libro_destino, capitulo_destino, versiculo_destino_inicio, versiculo_destino_fin, votos, nota
+             FROM referencias_cruzadas WHERE (libro_origen = ? OR libro_origen = ?) AND capitulo_origen = ? AND versiculo_origen = ?
+             ORDER BY votos DESC, id_ref ASC`,
+          )
+          .all(bookId, altBookId, chapter, verse) as typeof rows;
+      } else {
+        rows = db
+          .prepare(
+            `SELECT id_ref, libro_origen, capitulo_origen, versiculo_origen, libro_destino, capitulo_destino, versiculo_destino_inicio, versiculo_destino_fin, votos, nota
+             FROM referencias_cruzadas WHERE (libro_origen = ? OR libro_origen = ?) AND capitulo_origen = ?
+             ORDER BY versiculo_origen ASC, votos DESC, id_ref ASC`,
+          )
+          .all(bookId, altBookId, chapter) as typeof rows;
+      }
 
-        if (rows.length > 0) {
-          crossref.push({
-            moduleId: info.id,
-            name: info.name,
-            references: rows.map((r) => ({
-              id: r.id_ref,
-              sourceBook: r.libro_origen,
-              sourceChapter: r.capitulo_origen,
-              sourceVerse: r.versiculo_origen,
-              targetBook: r.libro_destino,
-              targetChapter: r.capitulo_destino,
-              targetVerseStart: r.versiculo_destino_inicio,
-              targetVerseEnd: r.versiculo_destino_fin,
-              targetReference: `${r.libro_destino} ${r.capitulo_destino}:${r.versiculo_destino_inicio}${
-                r.versiculo_destino_fin ? `-${r.versiculo_destino_fin}` : ""
-              }`,
-              votes: r.votos,
-              note: r.nota,
-            })),
-          });
-        }
-      } finally {
-        db.close();
+      if (rows.length > 0) {
+        crossref.push({
+          moduleId: info.id,
+          name: info.name,
+          references: rows.map((r) => ({
+            id: r.id_ref,
+            sourceBook: r.libro_origen,
+            sourceChapter: r.capitulo_origen,
+            sourceVerse: r.versiculo_origen,
+            targetBook: r.libro_destino,
+            targetChapter: r.capitulo_destino,
+            targetVerseStart: r.versiculo_destino_inicio,
+            targetVerseEnd: r.versiculo_destino_fin,
+            targetReference: `${r.libro_destino} ${r.capitulo_destino}:${r.versiculo_destino_inicio}${
+              r.versiculo_destino_fin ? `-${r.versiculo_destino_fin}` : ""
+            }`,
+            votes: r.votos,
+            note: r.nota,
+          })),
+        });
       }
     } catch {
       // Ignorar fallas si la base está siendo manipulada
     }
   }
 
-  return { crossref, durationMs: performance.now() - t0 };
+  const res = { crossref, durationMs: performance.now() - t0 };
+  crossRefCache.set(cacheKey, res);
+  return res;
 }

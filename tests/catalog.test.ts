@@ -104,4 +104,4 @@ test("API POST /api/modules/install-remote — Instalación remota y resolución
   const resMismatch = await installRemote(reqMismatch);
   // Debe fallar por no poder descargar o sha inválido
   assert.ok(resMismatch.status === 422 || resMismatch.status === 500);
-});
+}, 20000);

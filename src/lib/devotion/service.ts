@@ -1,10 +1,11 @@
-import { existsSync } from "node:fs";
-import { createDatabase, ensureModuleDbReady, resolveModuleDbPath } from "../db/sqlite.ts";
+import { getModuleDb } from "../db/sqlite.ts";
 import { getModule, listModules, readModuleInfo } from "../modules/registry.ts";
 import { parseScriptureReference } from "../bible/reference-parser.ts";
 import type { DevotionEntry, DevotionMoment, DevotionResponse, ParsedVerseRef } from "../../types/devotion.ts";
 
 export { parseScriptureReference };
+
+const devotionCache = new Map<string, DevotionResponse>();
 
 export function readDevotion(
   monthParam?: number | null,
@@ -13,7 +14,6 @@ export function readDevotion(
   requestedModuleId?: string | null,
   installedFilter?: string[] | null,
 ): DevotionResponse {
-  const t0 = performance.now();
   const now = new Date();
   const month = monthParam && monthParam >= 1 && monthParam <= 12 ? monthParam : now.getMonth() + 1;
   const day = dayParam && dayParam >= 1 && dayParam <= 31 ? dayParam : now.getDate();
@@ -21,6 +21,13 @@ export function readDevotion(
   // Si no se especifica momento, por la tarde/noche (>= 17 hrs) sugiere noche, de lo contrario mañana
   const defaultMoment: DevotionMoment = now.getHours() >= 17 ? "noche" : "manana";
   const moment: DevotionMoment = momentParam || defaultMoment;
+
+  const cacheKey = `${month}:${day}:${moment}:${requestedModuleId ?? ""}:${(installedFilter ?? []).sort().join(",")}`;
+  if (devotionCache.has(cacheKey)) {
+    return devotionCache.get(cacheKey)!;
+  }
+
+  const t0 = performance.now();
 
   let candidateModules = listModules(installedFilter).filter(
     (m) => m.type === "devotion" && m.status === "installed",
@@ -48,18 +55,8 @@ export function readDevotion(
     candidateModules.find((m) => m.id === "SPURGEON-ME") ||
     candidateModules[0];
 
-  const dbPath = resolveModuleDbPath(activeModuleInfo.id);
-  if (!existsSync(dbPath)) {
-    return {
-      devotion: null,
-      availableMoments: [],
-      availableModules,
-      durationMs: performance.now() - t0,
-    };
-  }
-
-  const db = createDatabase(dbPath, { readonly: true });
   try {
+    const db = getModuleDb(activeModuleInfo.id);
     // Verificar momentos disponibles para este día
     const momentRows = db
       .prepare(`SELECT DISTINCT momento FROM devocionales WHERE mes = ? AND dia = ?`)
@@ -117,13 +114,20 @@ export function readDevotion(
       parsedReference: parsedRef,
     };
 
-    return {
+    const res: DevotionResponse = {
       devotion,
       availableMoments,
       availableModules,
       durationMs: performance.now() - t0,
     };
-  } finally {
-    db.close();
+    devotionCache.set(cacheKey, res);
+    return res;
+  } catch {
+    return {
+      devotion: null,
+      availableMoments: [],
+      availableModules,
+      durationMs: performance.now() - t0,
+    };
   }
 }

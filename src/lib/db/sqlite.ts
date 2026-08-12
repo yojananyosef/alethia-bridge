@@ -32,12 +32,22 @@ export function getWritableModulesDir(): string {
   }
 }
 
+const readyModulePathCache = new Map<string, string>();
+
 /** Asegura que el archivo .db del módulo esté disponible en disco o tmp (extrayéndolo de dist-modules bajo demanda). */
 export function ensureModuleDbReady(moduleId: string): string {
+  const cached = readyModulePathCache.get(moduleId);
+  if (cached && existsSync(/*turbopackIgnore: true*/ cached)) {
+    return cached;
+  }
+
   const local = path.join(MODULES_DIR, `${moduleId}.db`);
   if (existsSync(/*turbopackIgnore: true*/ local)) {
     try {
-      if (statSync(/*turbopackIgnore: true*/ local).size > 1024) return local;
+      if (statSync(/*turbopackIgnore: true*/ local).size > 1024) {
+        readyModulePathCache.set(moduleId, local);
+        return local;
+      }
     } catch {}
   }
 
@@ -45,7 +55,10 @@ export function ensureModuleDbReady(moduleId: string): string {
   const tmp = path.join(writableDir, `${moduleId}.db`);
   if (existsSync(/*turbopackIgnore: true*/ tmp)) {
     try {
-      if (statSync(/*turbopackIgnore: true*/ tmp).size > 1024) return tmp;
+      if (statSync(/*turbopackIgnore: true*/ tmp).size > 1024) {
+        readyModulePathCache.set(moduleId, tmp);
+        return tmp;
+      }
     } catch {}
   }
 
@@ -349,6 +362,7 @@ export function getLexiconDb(): Database {
 
 /** Cierra y descarta la conexión en caché (usado por uninstall). */
 export function closeModuleDb(moduleId: string): void {
+  readyModulePathCache.delete(moduleId);
   const db = moduleCache.get(moduleId);
   if (db) {
     try {

@@ -39,10 +39,21 @@ import type { CommentaryModule, CrossRefModule, LexiconEntry, MorphologyAnalysis
 import type { DictionarySearchResult } from "../types/dictionary";
 import { cn } from "../lib/utils";
 
+const clientJsonCache = new Map<string, any>();
+
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
+  const isGet = !init || !init.method || init.method.toUpperCase() === "GET";
+  if (isGet && clientJsonCache.has(url)) {
+    return clientJsonCache.get(url) as T;
+  }
   const res = await fetch(url, { cache: "no-store", ...init });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return (await res.json()) as T;
+  const data = (await res.json()) as T;
+  if (isGet) {
+    if (clientJsonCache.size > 300) clientJsonCache.clear();
+    clientJsonCache.set(url, data);
+  }
+  return data;
 }
 
 export function PanelRightAnalysis() {

@@ -1,11 +1,13 @@
-import { existsSync } from "node:fs";
-import { createDatabase, ensureModuleDbReady, resolveModuleDbPath } from "../db/sqlite.ts";
+import { ensureModuleDbReady, getModuleDb } from "../db/sqlite.ts";
 import { listModules } from "../modules/registry.ts";
 import type {
   DictionaryEntry,
   DictionarySearchResponse,
   DictionarySearchResult,
 } from "../../types/dictionary.ts";
+
+const dictSearchCache = new Map<string, DictionarySearchResponse>();
+const dictEntryCache = new Map<string, DictionaryEntry | null>();
 
 export function listInstalledDictionaries(
   installedFilter?: string[] | null,
@@ -26,8 +28,13 @@ export function searchDictionary(
   limit = 40,
   installedFilter?: string[] | null,
 ): DictionarySearchResponse {
-  const t0 = performance.now();
   const query = queryRaw.trim();
+  const cacheKey = `${query}:${requestedModuleId ?? ""}:${limit}:${(installedFilter ?? []).sort().join(",")}`;
+  if (dictSearchCache.has(cacheKey)) {
+    return dictSearchCache.get(cacheKey)!;
+  }
+
+  const t0 = performance.now();
   const dicts = listInstalledDictionaries(installedFilter);
 
   if (dicts.length === 0) {
@@ -45,19 +52,8 @@ export function searchDictionary(
     dicts.find((d) => d.id === "EASTON") ||
     dicts[0];
 
-  const dbPath = resolveModuleDbPath(activeDict.id);
-  if (!existsSync(dbPath)) {
-    return {
-      query,
-      total: 0,
-      results: [],
-      availableDictionaries: dicts,
-      durationMs: performance.now() - t0,
-    };
-  }
-
-  const db = createDatabase(dbPath, { readonly: true });
   try {
+    const db = getModuleDb(activeDict.id);
     const results: DictionarySearchResult[] = [];
 
     if (!query) {
@@ -210,15 +206,23 @@ export function searchDictionary(
       }
     }
 
-    return {
+    const res: DictionarySearchResponse = {
       query,
       total: results.length,
       results,
       availableDictionaries: dicts,
       durationMs: performance.now() - t0,
     };
-  } finally {
-    db.close();
+    dictSearchCache.set(cacheKey, res);
+    return res;
+  } catch {
+    return {
+      query,
+      total: 0,
+      results: [],
+      availableDictionaries: dicts,
+      durationMs: performance.now() - t0,
+    };
   }
 }
 
@@ -229,6 +233,12 @@ export function getDictionaryEntry(
 ): DictionaryEntry | null {
   if (!slugOrTerm || !slugOrTerm.trim()) return null;
 
+  const clean = slugOrTerm.trim().toLowerCase();
+  const cacheKey = `${clean}:${requestedModuleId ?? ""}:${(installedFilter ?? []).sort().join(",")}`;
+  if (dictEntryCache.has(cacheKey)) {
+    return dictEntryCache.get(cacheKey) ?? null;
+  }
+
   const dicts = listInstalledDictionaries(installedFilter);
   if (dicts.length === 0) return null;
 
@@ -237,12 +247,8 @@ export function getDictionaryEntry(
     dicts.find((d) => d.id === "EASTON") ||
     dicts[0];
 
-  const dbPath = resolveModuleDbPath(activeDict.id);
-  if (!existsSync(dbPath)) return null;
-
-  const db = createDatabase(dbPath, { readonly: true });
   try {
-    const clean = slugOrTerm.trim().toLowerCase();
+    const db = getModuleDb(activeDict.id);
     const row = db
       .prepare(
         `SELECT id_entrada, termino, slug, definicion, referencias, fuente
@@ -259,9 +265,12 @@ export function getDictionaryEntry(
         }
       | undefined;
 
-    if (!row) return null;
+    if (!row) {
+      dictEntryCache.set(cacheKey, null);
+      return null;
+    }
 
-    return {
+    const entry: DictionaryEntry = {
       id: row.id_entrada,
       moduleId: activeDict.id,
       moduleName: activeDict.name,
@@ -271,7 +280,9 @@ export function getDictionaryEntry(
       references: row.referencias,
       source: row.fuente,
     };
-  } finally {
-    db.close();
+    dictEntryCache.set(cacheKey, entry);
+    return entry;
+  } catch {
+    return null;
   }
 }

@@ -364,6 +364,8 @@ export function PanelCenterReader() {
     };
   }, [modulesRevision, toggleModule]);
 
+  const chapterCacheRef = useRef<Map<string, ReadResponse>>(new Map());
+
   const load = useCallback(async () => {
     const activeStr = activeModules.length > 0 ? activeModules.join(",") : "";
     const params = new URLSearchParams({
@@ -372,10 +374,20 @@ export function PanelCenterReader() {
     });
     if (activeStr) params.set("modules", activeStr);
 
+    const cacheKey = `${syncGroupA.book}:${syncGroupA.chapter}:${activeStr}`;
+    const cached = chapterCacheRef.current.get(cacheKey);
+    if (cached) {
+      setData(cached);
+      setError(null);
+      return;
+    }
+
     try {
       const res = await fetch(`/api/bible/read?${params}`, { cache: "no-store" });
       if (!res.ok) throw new Error(`API read falló: ${res.status}`);
       const body = (await res.json()) as ReadResponse;
+      if (chapterCacheRef.current.size > 50) chapterCacheRef.current.clear();
+      chapterCacheRef.current.set(cacheKey, body);
       setData(body);
       setError(null);
     } catch (e) {
