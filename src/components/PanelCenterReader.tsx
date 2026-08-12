@@ -52,85 +52,6 @@ function VerseText({
   );
 }
 
-const LANG_LABEL: Record<string, string> = { es: "ES", el: "GR", he: "HE" };
-
-const MODULE_DESCRIPTIONS: Record<string, { short: string; full: string; info: string }> = {
-  RV1909: { short: "RV1909", full: "Reina-Valera 1909", info: "Español clásico literal con Strongs" },
-  WLC: { short: "WLC (Hebreo)", full: "Westminster Leningrad Codex", info: "Texto Masorético Hebreo con morfología OSHM y Strongs" },
-  SBLGNT: { short: "SBLGNT (Griego)", full: "Griego Crítico SBL", info: "Nuevo Testamento Griego con morfología Robinson y Strongs" },
-  NBV: { short: "NBV (Paráfrasis)", full: "Nueva Biblia Viva (2008)", info: "Paráfrasis dinámica en Español contemporáneo" },
-};
-
-/** Barra de módulos visible: activa/oculta cada versión con un clic. */
-function ModuleBar({
-  modules,
-  activeModules,
-  toggleModule,
-}: {
-  modules: ModuleInfo[];
-  activeModules: string[];
-  toggleModule: (id: string) => void;
-}) {
-  const available = modules.filter(
-    (m) => m.type === "bible" && m.status === "installed",
-  );
-  return (
-    <div className="max-w-[450px] overflow-x-auto scrollbar-none py-0.5">
-      <ToggleGroup
-        size="sm"
-        variant="outline"
-        multiple
-        value={activeModules}
-        onValueChange={(next) => {
-          if (next.length === 0) return;
-          const changed = available.find(
-            (m) => next.includes(m.id) !== activeModules.includes(m.id),
-          );
-          if (changed) toggleModule(changed.id);
-        }}
-        aria-label="Módulos bíblicos y comentarios activos"
-        className="flex-nowrap gap-1"
-      >
-        {available.map((m) => {
-          const active = activeModules.includes(m.id);
-          const isOnlyActive = active && activeModules.length <= 1;
-          const desc = MODULE_DESCRIPTIONS[m.id] ?? {
-            short: m.id,
-            full: m.name,
-            info: `${m.name} (${LANG_LABEL[m.language] ?? m.language})`,
-          };
-          return (
-            <ToggleGroupItem
-              key={m.id}
-              value={m.id}
-              title={
-                isOnlyActive
-                  ? `${desc.full} (Al menos un módulo debe permanecer activo)`
-                  : `${active ? "Ocultar" : "Mostrar"} ${desc.full} — ${desc.info}`
-              }
-              className={cn(
-                "gap-1.5 px-2 text-xs shrink-0 transition-all",
-                active ? "bg-accent/80 text-foreground font-semibold border-primary/40" : "text-muted-foreground",
-              )}
-            >
-              <span
-                className={cn(
-                  "inline-block h-1.5 w-1.5 rounded-full shrink-0 transition-colors",
-                  active ? "bg-primary" : "bg-muted-foreground/40",
-                )}
-              />
-              <span className="whitespace-nowrap">{desc.short}</span>
-              <span className="text-[10px] font-mono text-muted-foreground opacity-75">
-                {m.type === "commentary" ? "COM" : LANG_LABEL[m.language] ?? ""}
-              </span>
-            </ToggleGroupItem>
-          );
-        })}
-      </ToggleGroup>
-    </div>
-  );
-}
-
 function VerseView({
   verseNo,
   bookId,
@@ -513,15 +434,6 @@ export function PanelCenterReader() {
           <span className="hidden sm:inline font-mono text-[11px] text-muted-foreground">
             {data ? `${data.durationMs.toFixed(1)}ms` : ""}
           </span>
-        </div>
-
-        {/* Selector de módulos activos en DESKTOP (md+) */}
-        <div className="hidden md:flex items-center gap-2">
-          <ModuleBar
-            modules={modules}
-            activeModules={activeModules}
-            toggleModule={toggleModule}
-          />
         </div>
 
         {/* Herramientas de visualización y estudio en DESKTOP (md+) */}
