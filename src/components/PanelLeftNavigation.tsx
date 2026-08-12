@@ -150,6 +150,7 @@ export function PanelLeftNavigation() {
     installedModules,
     activeModules,
     toggleModule,
+    syncInstalledModules,
     readerLayout,
     setReaderLayout,
     fontSize,
@@ -167,17 +168,19 @@ export function PanelLeftNavigation() {
       setModules(data);
       setError(null);
 
-      // Sincronización inicial: si el cliente no tiene módulos guardados, popular con los del servidor
-      if (installedModules.length === 0 && data.length > 0) {
-        const availableIds = data.map((m) => m.id);
-        const bibles = data.filter((m) => m.type === "bible" && m.status === "installed");
-        useExegesisStore.setState((s) => ({
-          installedModules: availableIds,
-          activeModules: s.activeModules.length > 0 ? s.activeModules : (bibles.length > 0 ? [bibles[0].id] : []),
-        }));
+      const availableIds = data.map((m) => m.id);
+      const bibles = data.filter((m) => m.type === "bible" && m.status === "installed");
+      const needsInstalledSync =
+        availableIds.length > 0 &&
+        (
+          installedModules.length !== availableIds.length ||
+          availableIds.some((id) => !installedModules.includes(id))
+        );
+
+      if (needsInstalledSync) {
+        syncInstalledModules(availableIds, bibles[0]?.id ?? null);
       } else {
         // Auto-activación si hay biblias instaladas pero ninguna activa en el lector
-        const bibles = data.filter((m) => m.type === "bible" && m.status === "installed");
         if (bibles.length > 0) {
           const hasActive = bibles.some((b) => activeModules.includes(b.id));
           if (!hasActive) {
@@ -188,7 +191,7 @@ export function PanelLeftNavigation() {
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
-  }, [installedModules, activeModules, toggleModule]);
+  }, [installedModules, activeModules, toggleModule, syncInstalledModules]);
 
   useEffect(() => {
     void Promise.resolve().then(refresh);

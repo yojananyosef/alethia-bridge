@@ -91,14 +91,9 @@ export function PanelRightAnalysis() {
     }
 
     setLoadingLexicon(true);
-    const headers: Record<string, string> = {};
-    if (installedModules && installedModules.length > 0) {
-      headers["x-installed-modules"] = installedModules.join(",");
-    }
 
     const p1 = fetchJson<{ lexicon: LexiconEntry }>(
       `/api/bible/read?lexicon=${encodeURIComponent(activeLexiconTerm)}`,
-      { headers },
     )
       .then((b) => {
         if (!cancelled) setLexicon(b.lexicon);
@@ -111,7 +106,6 @@ export function PanelRightAnalysis() {
       `/api/bible/read?name=${encodeURIComponent(activeLexiconTerm)}&book=${encodeURIComponent(
         syncGroupA.book,
       )}`,
-      { headers },
     )
       .then((b) => {
         if (!cancelled) setNombres(b.nombres);
@@ -122,7 +116,6 @@ export function PanelRightAnalysis() {
 
     const p3 = fetchJson<{ morph: MorphologyAnalysis }>(
       `/api/bible/read?morph=${encodeURIComponent(activeLexiconTerm)}`,
-      { headers },
     )
       .then((b) => {
         if (!cancelled) setMorph(b.morph);
@@ -133,7 +126,6 @@ export function PanelRightAnalysis() {
 
     const p4 = fetchJson<{ results?: DictionarySearchResult[] }>(
       `/api/dictionary?q=${encodeURIComponent(activeLexiconTerm)}`,
-      { headers },
     )
       .then((b) => {
         if (!cancelled) setRelatedDictEntries(b.results?.slice(0, 2) ?? []);
@@ -183,13 +175,8 @@ export function PanelRightAnalysis() {
     void Promise.resolve().then(() => {
       if (!cancelled) setCommentary([]);
     });
-    const headers: Record<string, string> = {};
-    if (installedModules && installedModules.length > 0) {
-      headers["x-installed-modules"] = installedModules.join(",");
-    }
     fetchJson<{ commentary: CommentaryModule[] }>(
       `/api/bible/read?commentary=1&book=${encodeURIComponent(syncGroupA.book)}&chapter=${syncGroupA.chapter}`,
-      { headers },
     )
       .then((b) => {
         if (!cancelled) setCommentary(b.commentary);
@@ -200,7 +187,7 @@ export function PanelRightAnalysis() {
     return () => {
       cancelled = true;
     };
-  }, [syncGroupA.book, syncGroupA.chapter, installedModules, modulesRevision]);
+  }, [syncGroupA.book, syncGroupA.chapter, modulesRevision]);
 
   // Referencias cruzadas del versículo activo (módulos type=crossref, p. ej. TSK)
   useEffect(() => {
@@ -208,13 +195,8 @@ export function PanelRightAnalysis() {
     void Promise.resolve().then(() => {
       if (!cancelled) setCrossRefs([]);
     });
-    const headers: Record<string, string> = {};
-    if (installedModules && installedModules.length > 0) {
-      headers["x-installed-modules"] = installedModules.join(",");
-    }
     fetchJson<{ crossref: CrossRefModule[] }>(
       `/api/bible/read?crossref=1&book=${encodeURIComponent(syncGroupA.book)}&chapter=${syncGroupA.chapter}&verse=${syncGroupA.verse}`,
-      { headers },
     )
       .then((b) => {
         if (!cancelled) setCrossRefs(b.crossref ?? []);
@@ -225,7 +207,7 @@ export function PanelRightAnalysis() {
     return () => {
       cancelled = true;
     };
-  }, [syncGroupA.book, syncGroupA.chapter, syncGroupA.verse, installedModules, modulesRevision]);
+  }, [syncGroupA.book, syncGroupA.chapter, syncGroupA.verse, modulesRevision]);
 
   const editor = useEditor({
     extensions: [StarterKit],

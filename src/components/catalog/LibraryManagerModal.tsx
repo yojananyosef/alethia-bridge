@@ -90,10 +90,10 @@ export function LibraryManagerModal({
   const loadCatalog = useCallback(async (forceRefresh = false, overrideInstalled?: string[]) => {
     setLoading(true);
     try {
-      const currentInstalled = overrideInstalled ?? useExegesisStore.getState().installedModules ?? [];
-      const headers: Record<string, string> = {
-        "x-installed-modules": currentInstalled.join(","),
-      };
+      const headers: Record<string, string> = {};
+      if (overrideInstalled && overrideInstalled.length > 0) {
+        headers["x-installed-modules"] = overrideInstalled.join(",");
+      }
       const res = await fetch(`/api/catalog${forceRefresh ? "?refresh=1" : ""}`, {
         cache: "no-store",
         headers,

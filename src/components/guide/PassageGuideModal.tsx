@@ -60,19 +60,14 @@ export function PassageGuideModal({ open, onOpenChange }: PassageGuideModalProps
 
   const loadPassageGuide = useCallback(async () => {
     setLoading(true);
-    const headers: Record<string, string> = {};
-    if (installedModules && installedModules.length > 0) {
-      headers["x-installed-modules"] = installedModules.join(",");
-    }
 
     try {
       const v = syncGroupA.verse ?? 1;
       const [rRes, cRes, xRes] = await Promise.all([
-        fetch(`/api/bible/read?book=${syncGroupA.book}&chapter=${syncGroupA.chapter}`, { headers }),
-        fetch(`/api/bible/read?commentary=1&book=${syncGroupA.book}&chapter=${syncGroupA.chapter}`, { headers }),
+        fetch(`/api/bible/read?book=${syncGroupA.book}&chapter=${syncGroupA.chapter}`),
+        fetch(`/api/bible/read?commentary=1&book=${syncGroupA.book}&chapter=${syncGroupA.chapter}`),
         fetch(
           `/api/bible/read?crossref=1&book=${syncGroupA.book}&chapter=${syncGroupA.chapter}&verse=${v}`,
-          { headers },
         ),
       ]);
 

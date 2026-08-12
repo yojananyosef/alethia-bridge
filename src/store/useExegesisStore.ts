@@ -41,6 +41,7 @@ interface ExegesisActions {
   setSyncGroupA: (ref: SyncGroupReference) => void;
   setActiveTheme: (theme: ThemeId) => void;
   toggleModule: (moduleId: string) => void;
+  syncInstalledModules: (moduleIds: string[], preferredActiveModuleId?: string | null) => void;
   addInstalledModule: (moduleId: string) => void;
   removeInstalledModule: (moduleId: string) => void;
   bumpModulesRevision: () => void;
@@ -66,6 +67,14 @@ function syncInstalledCookie(modules: string[]) {
   }
 }
 
+function normalizeModuleIds(modules: string[]): string[] {
+  return Array.from(new Set(modules.map((m) => m.trim()).filter(Boolean)));
+}
+
+function areListsEqual(a: string[], b: string[]): boolean {
+  return a.length === b.length && a.every((value, index) => value === b[index]);
+}
+
 /** Lee de forma síncrona en cliente el estado guardado para evitar CUALQUIER flash visual. */
 function getInitialPersistedState() {
   const fallback = {
@@ -86,16 +95,23 @@ function getInitialPersistedState() {
     const raw = localStorage.getItem("alethia-exegesis-store");
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (parsed?.state?.syncGroupA?.book) {
+      if (parsed?.state && typeof parsed.state === "object") {
         const state = {
           ...fallback,
           ...parsed.state,
+          syncGroupA: parsed.state.syncGroupA?.book
+            ? {
+                book: parsed.state.syncGroupA.book,
+                chapter: Number(parsed.state.syncGroupA.chapter) || fallback.syncGroupA.chapter,
+                verse: parsed.state.syncGroupA.verse !== undefined
+                  ? Number(parsed.state.syncGroupA.verse) || fallback.syncGroupA.verse
+                  : fallback.syncGroupA.verse,
+              }
+            : fallback.syncGroupA,
           installedModules: parsed.state.installedModules ?? fallback.installedModules,
           activeModules: parsed.state.activeModules ?? fallback.activeModules,
         };
-        if (state.installedModules.length > 0) {
-          syncInstalledCookie(state.installedModules);
-        }
+        syncInstalledCookie(normalizeModuleIds(state.installedModules));
         return state;
       }
     }
@@ -144,6 +160,35 @@ export const useExegesisStore = create<ExegesisStore>()(
       setActiveHighlightColor: (color) => set({ activeHighlightColor: color }),
       setRightSidebarOpen: (isRightSidebarOpen) => set({ isRightSidebarOpen }),
       toggleRightSidebar: () => set((s) => ({ isRightSidebarOpen: !s.isRightSidebarOpen })),
+      syncInstalledModules: (moduleIds, preferredActiveModuleId = null) =>
+        set((state) => {
+          const installedModules = normalizeModuleIds(moduleIds);
+          let activeModules = normalizeModuleIds(
+            state.activeModules.filter((moduleId) => installedModules.includes(moduleId)),
+          );
+
+          if (activeModules.length === 0 && installedModules.length > 0) {
+            const defaultId =
+              (preferredActiveModuleId && installedModules.includes(preferredActiveModuleId))
+                ? preferredActiveModuleId
+                : installedModules.find((id) => id !== "lexicon" && id !== "TSK") || installedModules[0];
+            activeModules = [defaultId];
+          }
+
+          if (
+            areListsEqual(installedModules, state.installedModules) &&
+            areListsEqual(activeModules, state.activeModules)
+          ) {
+            return state;
+          }
+
+          syncInstalledCookie(installedModules);
+          return {
+            installedModules,
+            activeModules,
+            modulesRevision: state.modulesRevision + 1,
+          };
+        }),
       toggleModule: (moduleId) =>
         set((state) => {
           const has = state.activeModules.includes(moduleId);
@@ -164,12 +209,14 @@ export const useExegesisStore = create<ExegesisStore>()(
         }),
       addInstalledModule: (moduleId) =>
         set((state) => {
-          const list = state.installedModules.includes(moduleId)
-            ? state.installedModules
-            : [...state.installedModules, moduleId];
+          const list = normalizeModuleIds(
+            state.installedModules.includes(moduleId)
+              ? state.installedModules
+              : [...state.installedModules, moduleId],
+          );
           let active = state.activeModules;
           if (!active.includes(moduleId)) {
-            active = [...active, moduleId];
+            active = normalizeModuleIds([...active, moduleId]);
           }
           syncInstalledCookie(list);
           return {
@@ -180,8 +227,8 @@ export const useExegesisStore = create<ExegesisStore>()(
         }),
       removeInstalledModule: (moduleId) =>
         set((state) => {
-          const list = state.installedModules.filter((m) => m !== moduleId);
-          let active = state.activeModules.filter((m) => m !== moduleId);
+          const list = normalizeModuleIds(state.installedModules.filter((m) => m !== moduleId));
+          let active = normalizeModuleIds(state.activeModules.filter((m) => m !== moduleId));
           if (active.length === 0 && list.length > 0) {
             const nextBible = list.find((id) => id !== moduleId && id !== "lexicon");
             if (nextBible) active = [nextBible];
