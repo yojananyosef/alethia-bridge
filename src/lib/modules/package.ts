@@ -115,8 +115,12 @@ export function installModuleZip(
   const tmp = path.join(writableDir, `.install-${manifest.id}-${Date.now()}.db`);
 
   try {
-    writeFileSync(tmp, dbBytes);
-    const db = createDatabase(tmp);
+    // En serverless (Vercel) writableDir es /tmp, pequeño. Para evitar
+    // ENOSPC con módulos grandes, escribimos directamente en el destino
+    // y usamos un .bak solo si hay que reemplazar uno existente.
+    const finalPath = existsSync(target) ? `${target}.new` : target;
+    writeFileSync(finalPath, dbBytes);
+    const db = createDatabase(finalPath);
     initModuleMeta(db);
     // El manifest.json del paquete es la fuente de verdad → reescribir meta
     writeManifestMeta(db, {
@@ -142,28 +146,27 @@ export function installModuleZip(
     closeModuleDb(manifest.id);
     clearModuleInfoCache(manifest.id);
 
-    if (existsSync(target)) {
+    if (existsSync(target) && finalPath !== target) {
       try {
         rmSync(target, { force: true });
       } catch {}
-    }
-
-    try {
-      copyFileSync(tmp, target);
       try {
-        rmSync(tmp, { force: true });
-      } catch {}
-    } catch {
-      renameSync(tmp, target);
+        renameSync(finalPath, target);
+      } catch {
+        // Fallback: copia + remove (cross-device en serverless donde /tmp ≠ data/)
+        copyFileSync(finalPath, target);
+        rmSync(finalPath);
+      }
     }
 
     clearModuleInfoCache(manifest.id);
+    if (existsSync(tmp)) rmSync(tmp);
   } catch (err) {
-    if (existsSync(tmp)) {
-      try {
-        rmSync(tmp, { force: true });
-      } catch {}
-    }
+    try {
+      const partial = `${target}.new`;
+      if (existsSync(partial)) rmSync(partial);
+    } catch {}
+    if (existsSync(tmp)) rmSync(tmp);
     return { ok: false, error: err instanceof Error ? err.message : "error al escribir el módulo" };
   }
 
