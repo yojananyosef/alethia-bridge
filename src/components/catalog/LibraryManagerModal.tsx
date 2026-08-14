@@ -38,6 +38,14 @@ import type { CatalogItem, CatalogResponse, InstallRemoteResponse } from "../../
 import type { ModuleType } from "../../types/module";
 import { cn } from "../../lib/utils";
 import { useExegesisStore } from "../../store/useExegesisStore";
+import {
+  fetchClientCatalog,
+  getClientCatalogWithInstallStatus,
+  installClientModuleFromAbmod,
+  installClientModuleRemote,
+  setClientModuleEnabled,
+  uninstallClientModule,
+} from "../../lib/modules/client-registry";
 
 interface LibraryManagerModalProps {
   open: boolean;
@@ -90,16 +98,8 @@ export function LibraryManagerModal({
   const loadCatalog = useCallback(async (forceRefresh = false, overrideInstalled?: string[]) => {
     setLoading(true);
     try {
-      const headers: Record<string, string> = {};
-      if (overrideInstalled && overrideInstalled.length > 0) {
-        headers["x-installed-modules"] = overrideInstalled.join(",");
-      }
-      const res = await fetch(`/api/catalog${forceRefresh ? "?refresh=1" : ""}`, {
-        cache: "no-store",
-        headers,
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = (await res.json()) as CatalogResponse;
+      const data = await getClientCatalogWithInstallStatus(forceRefresh);
+      void overrideInstalled;
       setCatalog(data);
     } catch (e) {
       setNotification({
@@ -125,23 +125,10 @@ export function LibraryManagerModal({
     setNotification(null);
 
     try {
-      const res = await fetch("/api/modules/install-remote", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          moduleId: moduleItem.id,
-          downloadUrl: moduleItem.downloadUrl,
-          sha256: moduleItem.sha256,
-          force,
-        }),
-      });
+      const result = await installClientModuleRemote({ moduleId: moduleItem.id, force });
+      if (!result.ok) throw new Error(result.error ?? "fallo en la instalación");
 
-      const body = (await res.json()) as InstallRemoteResponse;
-      if (!res.ok || !body.ok) {
-        throw new Error(body.error ?? `HTTP ${res.status}`);
-      }
-
-      const installedDeps = body.installedDependencies ?? [];
+      const installedDeps = result.installedDependencies ?? [];
       const allNewIds = [moduleItem.id, ...installedDeps];
 
       for (const id of allNewIds) {
@@ -208,11 +195,7 @@ export function LibraryManagerModal({
   const handleToggleModule = async (moduleItem: CatalogItem) => {
     try {
       const nextStatus = moduleItem.localStatus === "disabled";
-      await fetch(`/api/modules/${encodeURIComponent(moduleItem.id)}`, {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ enabled: nextStatus }),
-      });
+      await setClientModuleEnabled(moduleItem.id, nextStatus);
       if (moduleItem.type === "bible") {
         if (nextStatus && !activeModules.includes(moduleItem.id)) {
           toggleModule(moduleItem.id);
@@ -252,10 +235,7 @@ export function LibraryManagerModal({
       return;
     }
     try {
-      const res = await fetch(`/api/modules/${encodeURIComponent(moduleItem.id)}`, {
-        method: "DELETE",
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      await uninstallClientModule(moduleItem.id);
       removeInstalledModule(moduleItem.id);
 
       setCatalog((prev) => {
@@ -300,14 +280,11 @@ export function LibraryManagerModal({
     setInstallProgressText(`Procesando e instalando paquete local "${file.name}"…`);
     setNotification(null);
     try {
-      const form = new FormData();
-      form.append("file", file);
-      const res = await fetch("/api/modules", { method: "POST", body: form });
-      const body = (await res.json()) as { ok?: boolean; moduleId?: string; error?: string };
-      if (!res.ok || !body.ok) throw new Error(body.error ?? `HTTP ${res.status}`);
+      const result = await installClientModuleFromAbmod(new Uint8Array(await file.arrayBuffer()));
+      if (!result.ok) throw new Error(result.error ?? "error al instalar");
 
-      if (body.moduleId) {
-        addInstalledModule(body.moduleId);
+      if (result.moduleId) {
+        addInstalledModule(result.moduleId);
       }
 
       bumpModulesRevision();
@@ -315,7 +292,7 @@ export function LibraryManagerModal({
 
       setNotification({
         type: "success",
-        text: `Paquete local instalado con éxito (${body.moduleId}).`,
+        text: `Paquete local instalado con éxito (${result.moduleId}).`,
       });
 
       const latestInstalled = useExegesisStore.getState().installedModules;

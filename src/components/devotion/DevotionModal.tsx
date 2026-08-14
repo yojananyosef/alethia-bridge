@@ -26,6 +26,7 @@ import {
   DialogTitle,
 } from "../ui/dialog";
 import { useExegesisStore } from "../../store/useExegesisStore";
+import { readDevotion as readDevotionClient } from "../../lib/bible/client-service";
 import type { DevotionEntry, DevotionMoment, DevotionResponse } from "../../types/devotion";
 import { cn } from "../../lib/utils";
 
@@ -64,16 +65,7 @@ export function DevotionModal({ open, onOpenChange }: DevotionModalProps) {
   const loadDevotion = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({
-        month: String(month),
-        day: String(day),
-        moment,
-      });
-      if (selectedModule) params.set("moduleId", selectedModule);
-
-      const res = await fetch(`/api/devotion?${params.toString()}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = (await res.json()) as DevotionResponse;
+      const json = await readDevotionClient(month, day, moment, selectedModule || null);
       setData(json);
       if (json.devotion && !selectedModule) {
         setSelectedModule(json.devotion.moduleId);

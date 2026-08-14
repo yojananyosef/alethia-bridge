@@ -29,6 +29,12 @@ import {
   DialogTitle,
 } from "../ui/dialog";
 import { useExegesisStore } from "../../store/useExegesisStore";
+import {
+  readChapter as readChapterClient,
+  readCommentary as readCommentaryClient,
+  readCrossReferences as readCrossReferencesClient,
+  searchDictionary as searchDictionaryClient,
+} from "../../lib/bible/client-service";
 import type {
   CommentaryModule,
   CrossRefModule,
@@ -63,34 +69,20 @@ export function PassageGuideModal({ open, onOpenChange }: PassageGuideModalProps
 
     try {
       const v = syncGroupA.verse ?? 1;
-      const [rRes, cRes, xRes] = await Promise.all([
-        fetch(`/api/bible/read?book=${syncGroupA.book}&chapter=${syncGroupA.chapter}`),
-        fetch(`/api/bible/read?commentary=1&book=${syncGroupA.book}&chapter=${syncGroupA.chapter}`),
-        fetch(
-          `/api/bible/read?crossref=1&book=${syncGroupA.book}&chapter=${syncGroupA.chapter}&verse=${v}`,
-        ),
+      const [rJson, cJson, xJson] = await Promise.all([
+        readChapterClient(syncGroupA.book, String(syncGroupA.chapter), null),
+        readCommentaryClient(syncGroupA.book, String(syncGroupA.chapter), installedModules),
+        readCrossReferencesClient(syncGroupA.book, String(syncGroupA.chapter), String(v), installedModules),
       ]);
 
-      if (rRes.ok) {
-        const rJson = (await rRes.json()) as ReadResponse;
-        setReadData(rJson);
-      }
-      if (cRes.ok) {
-        const cJson = (await cRes.json()) as { commentary: CommentaryModule[] };
-        setCommentaryData(cJson.commentary ?? []);
-      }
-      if (xRes.ok) {
-        const xJson = (await xRes.json()) as { crossref: CrossRefModule[] };
-        setCrossRefData(xJson.crossref ?? []);
-      }
+      setReadData(rJson);
+      setCommentaryData(cJson.commentary ?? []);
+      setCrossRefData(xJson.crossref ?? []);
 
       // Buscar artículos temáticos relevantes en el diccionario
       try {
-        const dRes = await fetch(`/api/dictionary?q=${encodeURIComponent(bookName)}`);
-        if (dRes.ok) {
-          const dJson = (await dRes.json()) as { results: DictionarySearchResult[] };
-          setDictArticles(dJson.results?.slice(0, 3) ?? []);
-        }
+        const dJson = await searchDictionaryClient(bookName);
+        setDictArticles(dJson.results?.slice(0, 3) ?? []);
       } catch {}
     } catch {
       // Manejar error silenciosamente

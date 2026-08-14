@@ -19,6 +19,8 @@ import { LibraryManagerModal } from "./catalog/LibraryManagerModal";
 import { ToggleGroup, ToggleGroupItem } from "../components/ui/toggle-group";
 import { Button } from "../components/ui/button";
 import { useExegesisStore } from "../store/useExegesisStore";
+import { listClientModules } from "../lib/modules/client-registry";
+import { readChapter as readChapterClient } from "../lib/bible/client-service";
 import type { InterlinearModule, ReadResponse, VersePayload } from "../types/bible";
 import type { ModuleInfo } from "../types/module";
 import { CANON } from "../lib/canon";
@@ -262,16 +264,9 @@ export function PanelCenterReader() {
 
   useEffect(() => {
     let cancelled = false;
-    const installed = useExegesisStore.getState().installedModules;
-    const headers: Record<string, string> = {};
-    if (installed && installed.length > 0) {
-      headers["x-installed-modules"] = installed.join(",");
-    }
-    void fetch("/api/modules", { cache: "no-store", headers })
-      .then((r) => r.json())
-      .then((d: { modules?: ModuleInfo[] }) => {
+    listClientModules()
+      .then((list) => {
         if (!cancelled) {
-          const list = d.modules ?? [];
           setModules(list);
           const bibles = list.filter((m) => m.type === "bible" && m.status === "installed");
           if (bibles.length > 0 && useExegesisStore.getState().activeModules.length === 0) {
@@ -288,14 +283,8 @@ export function PanelCenterReader() {
   const chapterCacheRef = useRef<Map<string, ReadResponse>>(new Map());
 
   const load = useCallback(async () => {
-    const activeStr = activeModules.length > 0 ? activeModules.join(",") : "";
-    const params = new URLSearchParams({
-      book: syncGroupA.book,
-      chapter: String(syncGroupA.chapter),
-    });
-    if (activeStr) params.set("modules", activeStr);
-
-    const cacheKey = `${syncGroupA.book}:${syncGroupA.chapter}:${activeStr}`;
+    const active = activeModules.length > 0 ? activeModules : null;
+    const cacheKey = `${syncGroupA.book}:${syncGroupA.chapter}:${active?.join(",") ?? ""}`;
     const cached = chapterCacheRef.current.get(cacheKey);
     if (cached) {
       setData(cached);
@@ -304,9 +293,7 @@ export function PanelCenterReader() {
     }
 
     try {
-      const res = await fetch(`/api/bible/read?${params}`, { cache: "no-store" });
-      if (!res.ok) throw new Error(`API read falló: ${res.status}`);
-      const body = (await res.json()) as ReadResponse;
+      const body = await readChapterClient(syncGroupA.book, String(syncGroupA.chapter), active);
       if (chapterCacheRef.current.size > 50) chapterCacheRef.current.clear();
       chapterCacheRef.current.set(cacheKey, body);
       setData(body);

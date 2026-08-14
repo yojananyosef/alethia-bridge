@@ -21,6 +21,8 @@ import { DevotionModal } from "./devotion/DevotionModal";
 import { DictionaryModal } from "./dictionary/DictionaryModal";
 import { PassageGuideModal } from "./guide/PassageGuideModal";
 import { useExegesisStore } from "../store/useExegesisStore";
+import { listClientModules } from "../lib/modules/client-registry";
+import { searchBible as searchBibleClient } from "../lib/bible/client-service";
 import type { SearchResponse, SearchResult, ThemeId } from "../types/bible";
 import type { ModuleInfo } from "../types/module";
 import { CANON } from "../lib/canon";
@@ -70,10 +72,9 @@ export function Omnibar() {
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
-    fetch("/api/modules", { cache: "no-store" })
-      .then((r) => r.json())
-      .then((d: { modules?: ModuleInfo[] }) => {
-        if (!cancelled) setModules(d.modules ?? []);
+    listClientModules()
+      .then((d) => {
+        if (!cancelled) setModules(d);
       })
       .catch(() => {});
     return () => {
@@ -101,11 +102,8 @@ export function Omnibar() {
     });
 
     searchTimeoutRef.current = setTimeout(() => {
-      const activeStr = activeModules.length > 0 ? activeModules.join(",") : "RV1909";
-      fetch(`/api/bible/search?q=${encodeURIComponent(clean)}&modules=${encodeURIComponent(activeStr)}&limit=15`, {
-        cache: "no-store",
-      })
-        .then((r) => r.json())
+      const activeStr = activeModules.length > 0 ? activeModules : ["RV1909"];
+      searchBibleClient(clean, activeStr, 15)
         .then((data: SearchResponse) => {
           setSearchResults(data.results ?? []);
           setSearchTotal(data.total ?? 0);

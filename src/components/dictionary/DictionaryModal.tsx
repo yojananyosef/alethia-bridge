@@ -24,6 +24,10 @@ import {
 } from "../ui/dialog";
 import { Input } from "../ui/input";
 import { useExegesisStore } from "../../store/useExegesisStore";
+import {
+  getDictionaryEntry as getDictionaryEntryClient,
+  searchDictionary as searchDictionaryClient,
+} from "../../lib/bible/client-service";
 import type {
   DictionaryEntry,
   DictionarySearchResponse,
@@ -54,11 +58,7 @@ export function DictionaryModal({ open, onOpenChange, initialTerm }: DictionaryM
   const runSearch = useCallback(async (q: string, modId?: string) => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ q });
-      if (modId) params.set("moduleId", modId);
-      const res = await fetch(`/api/dictionary?${params.toString()}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = (await res.json()) as DictionarySearchResponse;
+      const data = await searchDictionaryClient(q, modId || null);
       setSearchResults(data.results);
       setAvailableDicts(data.availableDictionaries);
       if (data.results.length > 0 && !selectedSlug) {
@@ -74,12 +74,8 @@ export function DictionaryModal({ open, onOpenChange, initialTerm }: DictionaryM
   // Carga de artículo individual
   const loadEntry = useCallback(async (slug: string, modId?: string) => {
     try {
-      const params = new URLSearchParams({ entry: slug });
-      if (modId) params.set("moduleId", modId);
-      const res = await fetch(`/api/dictionary?${params.toString()}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = (await res.json()) as { entry: DictionaryEntry };
-      setActiveEntry(data.entry);
+      const entry = await getDictionaryEntryClient(slug, modId || null);
+      setActiveEntry(entry);
     } catch {
       setActiveEntry(null);
     }

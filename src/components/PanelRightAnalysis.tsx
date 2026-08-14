@@ -32,6 +32,15 @@ import { LibraryManagerModal } from "./catalog/LibraryManagerModal";
 import { DictionaryModal } from "./dictionary/DictionaryModal";
 import { LexiconDefinitionView } from "./lexicon/LexiconDefinitionView";
 import { useExegesisStore } from "../store/useExegesisStore";
+import {
+  getDictionaryEntry as getDictionaryEntryClient,
+  getLexiconEntry as getLexiconEntryClient,
+  getMorphology as getMorphologyClient,
+  getProperNames as getProperNamesClient,
+  readCommentary as readCommentaryClient,
+  readCrossReferences as readCrossReferencesClient,
+  searchDictionary as searchDictionaryClient,
+} from "../lib/bible/client-service";
 
 import { addNote, deleteNote, notesForVerse } from "../lib/db/dexie-user-db";
 import type { UserNote } from "../lib/db/dexie-user-db";
@@ -39,21 +48,12 @@ import type { CommentaryModule, CrossRefModule, LexiconEntry, MorphologyAnalysis
 import type { DictionarySearchResult } from "../types/dictionary";
 import { cn } from "../lib/utils";
 
-const clientJsonCache = new Map<string, any>();
+const clientJsonCache = new Map<string, unknown>();
 
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
-  const isGet = !init || !init.method || init.method.toUpperCase() === "GET";
-  if (isGet && clientJsonCache.has(url)) {
-    return clientJsonCache.get(url) as T;
-  }
-  const res = await fetch(url, { cache: "no-store", ...init });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const data = (await res.json()) as T;
-  if (isGet) {
-    if (clientJsonCache.size > 300) clientJsonCache.clear();
-    clientJsonCache.set(url, data);
-  }
-  return data;
+  void clientJsonCache;
+  void init;
+  throw new Error(`API remota no disponible en cliente: ${url}`);
 }
 
 export function PanelRightAnalysis() {
@@ -112,41 +112,31 @@ export function PanelRightAnalysis() {
 
     setLoadingLexicon(true);
 
-    const p1 = fetchJson<{ lexicon: LexiconEntry }>(
-      `/api/bible/read?lexicon=${encodeURIComponent(activeLexiconTerm)}`,
-    )
-      .then((b) => {
-        if (!cancelled) setLexicon(b.lexicon);
+    const p1 = getLexiconEntryClient(activeLexiconTerm)
+      .then((lex) => {
+        if (!cancelled) setLexicon(lex);
       })
       .catch(() => {
         if (!cancelled) setLexicon(null);
       });
 
-    const p2 = fetchJson<{ nombres: ProperName[] }>(
-      `/api/bible/read?name=${encodeURIComponent(activeLexiconTerm)}&book=${encodeURIComponent(
-        syncGroupA.book,
-      )}`,
-    )
-      .then((b) => {
-        if (!cancelled) setNombres(b.nombres);
+    const p2 = getProperNamesClient(activeLexiconTerm, syncGroupA.book)
+      .then((nombres) => {
+        if (!cancelled) setNombres(nombres);
       })
       .catch(() => {
         if (!cancelled) setNombres([]);
       });
 
-    const p3 = fetchJson<{ morph: MorphologyAnalysis }>(
-      `/api/bible/read?morph=${encodeURIComponent(activeLexiconTerm)}`,
-    )
-      .then((b) => {
-        if (!cancelled) setMorph(b.morph);
+    const p3 = getMorphologyClient(activeLexiconTerm)
+      .then((morph) => {
+        if (!cancelled) setMorph(morph);
       })
       .catch(() => {
         if (!cancelled) setMorph(null);
       });
 
-    const p4 = fetchJson<{ results?: DictionarySearchResult[] }>(
-      `/api/dictionary?q=${encodeURIComponent(activeLexiconTerm)}`,
-    )
+    const p4 = searchDictionaryClient(activeLexiconTerm)
       .then((b) => {
         if (!cancelled) setRelatedDictEntries(b.results?.slice(0, 2) ?? []);
       })
@@ -195,9 +185,7 @@ export function PanelRightAnalysis() {
     void Promise.resolve().then(() => {
       if (!cancelled) setCommentary([]);
     });
-    fetchJson<{ commentary: CommentaryModule[] }>(
-      `/api/bible/read?commentary=1&book=${encodeURIComponent(syncGroupA.book)}&chapter=${syncGroupA.chapter}`,
-    )
+    readCommentaryClient(syncGroupA.book, String(syncGroupA.chapter), useExegesisStore.getState().installedModules)
       .then((b) => {
         if (!cancelled) setCommentary(b.commentary);
       })
@@ -215,8 +203,11 @@ export function PanelRightAnalysis() {
     void Promise.resolve().then(() => {
       if (!cancelled) setCrossRefs([]);
     });
-    fetchJson<{ crossref: CrossRefModule[] }>(
-      `/api/bible/read?crossref=1&book=${encodeURIComponent(syncGroupA.book)}&chapter=${syncGroupA.chapter}&verse=${syncGroupA.verse}`,
+    readCrossReferencesClient(
+      syncGroupA.book,
+      String(syncGroupA.chapter),
+      String(syncGroupA.verse),
+      useExegesisStore.getState().installedModules,
     )
       .then((b) => {
         if (!cancelled) setCrossRefs(b.crossref ?? []);

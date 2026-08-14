@@ -30,6 +30,12 @@ import {
 } from "../components/ui/sidebar";
 import { LibraryManagerModal } from "./catalog/LibraryManagerModal";
 import { useExegesisStore } from "../store/useExegesisStore";
+import {
+  installClientModuleFromAbmod,
+  listClientModules,
+  setClientModuleEnabled,
+  uninstallClientModule,
+} from "../lib/modules/client-registry";
 import type { ModuleBook, ModuleInfo } from "../types/module";
 import { CANON } from "../lib/canon";
 import { cn } from "../lib/utils";
@@ -38,15 +44,7 @@ const OT_BOOK_IDS = new Set(CANON.slice(0, 39).map((b) => b.id));
 const NT_BOOK_IDS = new Set(CANON.slice(39).map((b) => b.id));
 
 async function fetchModules(): Promise<ModuleInfo[]> {
-  const installed = useExegesisStore.getState().installedModules;
-  const headers: Record<string, string> = {};
-  if (installed && installed.length > 0) {
-    headers["x-installed-modules"] = installed.join(",");
-  }
-  const res = await fetch("/api/modules", { cache: "no-store", headers });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const body = (await res.json()) as { modules: ModuleInfo[] };
-  return body.modules;
+  return listClientModules();
 }
 
 const LANG_BADGES: Record<string, { label: string; bg: string }> = {
@@ -246,11 +244,8 @@ export function PanelLeftNavigation() {
     setBusy(true);
     setError(null);
     try {
-      const form = new FormData();
-      form.append("file", file);
-      const res = await fetch("/api/modules", { method: "POST", body: form });
-      const body = (await res.json()) as { ok?: boolean; moduleId?: string; error?: string };
-      if (!res.ok || !body.ok) throw new Error(body.error ?? `HTTP ${res.status}`);
+      const result = await installClientModuleFromAbmod(new Uint8Array(await file.arrayBuffer()));
+      if (!result.ok) throw new Error(result.error ?? "error al instalar");
       await refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -268,11 +263,7 @@ export function PanelLeftNavigation() {
           ),
     );
     try {
-      await fetch(`/api/modules/${encodeURIComponent(m.id)}`, {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ enabled: m.status === "disabled" }),
-      });
+      await setClientModuleEnabled(m.id, m.status === "disabled");
       await refresh();
     } catch {
       await refresh();
@@ -282,8 +273,7 @@ export function PanelLeftNavigation() {
   const uninstall = async (m: ModuleInfo) => {
     if (!window.confirm(`¿Desinstalar el módulo "${m.name}" (${m.id})?`)) return;
     try {
-      const res = await fetch(`/api/modules/${encodeURIComponent(m.id)}`, { method: "DELETE" });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      await uninstallClientModule(m.id);
       await refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
