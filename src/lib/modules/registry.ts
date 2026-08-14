@@ -188,32 +188,21 @@ export function getInstalledIdsFromRequest(request?: Request): string[] | null {
   return null;
 }
 
+const loggedFailures = new Set<string>();
+
 /** Escanea módulos instalados (respeta el filtro de cliente por usuario si está presente). */
 export function listModules(installedFilter?: string[] | null): ModuleInfo[] {
   const moduleMap = new Map<string, ModuleInfo>();
+  const wantedIds = new Set<string>();
 
-  // Si el cliente especifica su lista de módulos instalados (fuente de verdad por usuario)
   if (installedFilter !== undefined && installedFilter !== null) {
-    if (installedFilter.length === 0) {
-      return [];
-    }
     for (const id of installedFilter) {
-      const cleanId = id.trim();
-      if (!cleanId) continue;
-      ensureModuleDbReady(cleanId);
-      const info = readModuleInfo(cleanId);
-      if (info) moduleMap.set(cleanId, info);
+      const clean = id.trim();
+      if (clean) wantedIds.add(clean);
     }
-    // Asegurar que el módulo 'lexicon' esté accesible si existe físicamente (módulo clave del sistema)
-    if (!moduleMap.has("lexicon")) {
-      ensureModuleDbReady("lexicon");
-      const info = readModuleInfo("lexicon");
-      if (info) moduleMap.set("lexicon", info);
-    }
-    return Array.from(moduleMap.values()).sort((a, b) => a.id.localeCompare(b.id));
   }
 
-  // Fallback si no hay header/cookie de cliente o viene vacío (descubrimiento completo de disco)
+  // Descubrimiento completo de disco SIEMPRE (es la fuente de verdad física).
   const defaultLocalIds = ["RV1909", "SBLGNT", "WLC", "lexicon", "EASTON", "SPURGEON-ME", "TA", "TSK", "MHC"];
   for (const id of defaultLocalIds) {
     ensureModuleDbReady(id);
@@ -228,11 +217,42 @@ export function listModules(installedFilter?: string[] | null): ModuleInfo[] {
         const moduleId = file.replace(/\.db$/, "");
         const info = readModuleInfo(moduleId);
         if (info) moduleMap.set(moduleId, info);
+        else logModuleFailure(moduleId);
       }
     } catch {}
   }
 
+  // Resolver además los IDs del filtro que no estén en disco (descarga on-demand).
+  for (const id of wantedIds) {
+    if (moduleMap.has(id)) continue;
+    ensureModuleDbReady(id);
+    const info = readModuleInfo(id);
+    if (info) moduleMap.set(id, info);
+    else logModuleFailure(id);
+  }
+
+  // lexicon es el módulo clave del sistema: asegurarlo siempre.
+  if (!moduleMap.has("lexicon")) {
+    ensureModuleDbReady("lexicon");
+    const info = readModuleInfo("lexicon");
+    if (info) moduleMap.set("lexicon", info);
+  }
+
+  // Si hay filtro de cliente, devolver intersección (módulos que pidió y existen).
+  if (wantedIds.size > 0) {
+    return Array.from(moduleMap.values())
+      .filter((m) => wantedIds.has(m.id) || m.id === "lexicon")
+      .sort((a, b) => a.id.localeCompare(b.id));
+  }
+
   return Array.from(moduleMap.values()).sort((a, b) => a.id.localeCompare(b.id));
+}
+
+function logModuleFailure(moduleId: string): void {
+  const key = `${moduleId}:${Date.now()}`;
+  if (loggedFailures.has(key)) return;
+  loggedFailures.add(key);
+  console.error(`[registry] módulo no resoluble: ${moduleId}`);
 }
 
 export function getModule(moduleId: string): ModuleInfo | null {

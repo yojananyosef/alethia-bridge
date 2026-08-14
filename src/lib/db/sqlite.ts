@@ -117,16 +117,22 @@ export async function ensureModuleReadyAsync(moduleId: string): Promise<string> 
         headers: { "User-Agent": "Alethia-Bridge-Runtime/1.0" },
         signal: AbortSignal.timeout(20000),
       });
-      if (res.ok) {
-        const bytes = new Uint8Array(await res.arrayBuffer());
-        const zip = unzipSync(bytes);
-        const dbBytes = zip["module.db"] || zip[`${moduleId}.db`];
-        if (dbBytes && dbBytes.length > 0) {
-          writeFileSync(target, dbBytes);
-          return target;
-        }
+      if (!res.ok) {
+        console.error(`[sqlite] descarga ${moduleId}: HTTP ${res.status} ${url}`);
+        continue;
       }
-    } catch {}
+      const bytes = new Uint8Array(await res.arrayBuffer());
+      const zip = unzipSync(bytes);
+      const dbBytes = zip["module.db"] || zip[`${moduleId}.db`];
+      if (dbBytes && dbBytes.length > 0) {
+        writeFileSync(target, dbBytes);
+        readyModulePathCache.set(moduleId, target);
+        return target;
+      }
+      console.error(`[sqlite] descarga ${moduleId}: zip sin module.db (${url})`);
+    } catch (err) {
+      console.error(`[sqlite] descarga ${moduleId} falló: ${err instanceof Error ? err.message : String(err)}`);
+    }
   }
 
   return target;
