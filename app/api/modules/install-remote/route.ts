@@ -10,8 +10,9 @@ export const dynamic = "force-dynamic";
  * Valida la integridad del archivo mediante SHA-256 e instala atómicamente.
  */
 export async function POST(request: Request): Promise<Response> {
+  let body: Partial<InstallRemoteRequest> = {};
   try {
-    const body = (await request.json()) as Partial<InstallRemoteRequest>;
+    body = (await request.json()) as Partial<InstallRemoteRequest>;
 
     if (!body.moduleId || typeof body.moduleId !== "string") {
       return Response.json(
@@ -30,7 +31,14 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json(result);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Error al instalar el módulo remoto";
-    const isValidationError = message.includes("SHA-256") || message.includes("no coincide");
-    return Response.json({ error: message }, { status: isValidationError ? 422 : 500 });
+    const stack = err instanceof Error ? err.stack : undefined;
+    const code = err instanceof Error && "code" in err ? (err as NodeJS.ErrnoException).code : undefined;
+    console.error("[install-remote]", { moduleId: body.moduleId, message, code, stack });
+    const isValidationError =
+      message.includes("SHA-256") || message.includes("no coincide");
+    return Response.json(
+      { error: message, code, stack: process.env.NODE_ENV === "production" ? undefined : stack },
+      { status: isValidationError ? 422 : 500 },
+    );
   }
 }
