@@ -15,10 +15,7 @@ export function createDatabase(file: string, options?: { readonly?: boolean }): 
 }
 
 export const MODULES_DIR = path.join(process.cwd(), "data", "modules");
-export const TMP_MODULES_DIR = path.join(
-  process.env.TMPDIR || process.env.VERCEL_TMPDIR || "/tmp",
-  "alethia-modules",
-);
+export const TMP_MODULES_DIR = path.join(process.env.TMPDIR || "/tmp", "alethia-modules");
 
 export function getWritableModulesDir(): string {
   try {
@@ -30,9 +27,6 @@ export function getWritableModulesDir(): string {
   } catch {
     try {
       mkdirSync(TMP_MODULES_DIR, { recursive: true });
-      const testFile = path.join(TMP_MODULES_DIR, `.test-write-${Date.now()}.tmp`);
-      writeFileSync(testFile, "1");
-      rmSync(testFile);
     } catch {}
     return TMP_MODULES_DIR;
   }
